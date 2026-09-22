@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PortoUMKM - Katalog Resmi UMKM Binaan PPU UT Cakung</title>
+
+  <!-- Tailwind (utility-first, sesuai design tokens DESIGN.md) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js: dipakai untuk grafik Distribusi Produk per Kategori di Dashboard Admin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Bootstrap Icons (dipakai untuk ikon UI) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Font Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans">
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner-brand"></div>
+    <p class="mt-3 text-sm text-[var(--text-muted)]">Memuat PortoUMKM...</p>
+  </div>
+
+  <!-- =========== NAVBAR PUBLIK =========== -->
+  <header id="publicNavbar" class="public-navbar">
+    <div class="navbar-main">
+      <div class="mobile-nav-wrap">
+        <button class="admin-link mobile-nav-toggle" onclick="event.stopPropagation(); toggleMobileNav()" aria-label="Menu">
+          <i class="bi bi-list"></i>
+        </button>
+        <div id="mobileNavPanel" class="mobile-nav-panel hidden" onclick="event.stopPropagation()">
+          <a href="javascript:void(0)" onclick="navigateTo('home')" class="mobile-nav-link" data-page="home"><i class="bi bi-house"></i> Beranda</a>
+          <a href="javascript:void(0)" onclick="navigateTo('katalog')" class="mobile-nav-link" data-page="katalog"><i class="bi bi-grid"></i> Semua Produk</a>
+          <a href="javascript:void(0)" onclick="navigateTo('mitra')" class="mobile-nav-link" data-page="mitra"><i class="bi bi-building"></i> Mitra Pemasaran</a>
+        </div>
+      </div>
+      <div class="brand" onclick="navigateTo('home')">
+        <div>
+          <img id="appLogo" src="assets/logo.png" alt="PortoUMKM" class="brand-logo">
+        </div>
+      </div>
+      <nav class="nav-links">
+        <a href="javascript:void(0)" onclick="navigateTo('home')" class="nav-link" data-page="home">Beranda</a>
+        <a href="javascript:void(0)" onclick="navigateTo('katalog')" class="nav-link" data-page="katalog">Semua Produk</a>
+        <a href="javascript:void(0)" onclick="navigateTo('mitra')" class="nav-link" data-page="mitra">Mitra Pemasaran</a>
+      </nav>
+      <div class="navbar-actions">
+        <div class="search-box hidden md:flex">
+          <i class="bi bi-search"></i>
+          <input id="navSearchInput" type="text" placeholder="Cari produk, UMKM, kategori..." onkeydown="if(event.key==='Enter') runNavSearch()">
+        </div>
+        <div class="search-popover-wrap">
+          <button class="admin-link" onclick="event.stopPropagation(); toggleMobileSearch()" title="Cari">
+            <i class="bi bi-search"></i>
+          </button>
+          <div id="mobileSearchRow" class="mobile-search-row hidden" onclick="event.stopPropagation()">
+            <div class="search-box" style="width:100%;">
+              <i class="bi bi-search"></i>
+              <input id="navSearchInputMobile" type="text" placeholder="Cari produk, UMKM, kategori..." onkeydown="if(event.key==='Enter') runNavSearchMobile()">
+            </div>
+          </div>
+        </div>
+        <button class="cart-btn" onclick="navigateTo('keranjang')">
+          <i class="bi bi-cart3"></i>
+          <span id="cartBadge" class="cart-badge hidden">0</span>
+        </button>
+        <button id="adminLoginBtn" class="admin-link" onclick="bukaAdminAtauLogin()" title="Admin">
+          <i class="bi bi-shield-lock"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========== SIDEBAR ADMIN (tersembunyi sampai login) =========== -->
+  <nav id="adminSidebar" class="admin-sidebar hidden">
+    <div class="admin-sidebar-header">
+      <img id="adminLogo" src="assets/logo.png" alt="Logo" style="height:28px; width:auto; object-fit:contain;">
+      <div>
+        <div class="text-xs text-[var(--sidebar-text)]">Portal Super Admin</div>
+      </div>
+    </div>
+    <ul class="admin-nav">
+      <li><a href="javascript:void(0)" onclick="navigateTo('adminDashboard')" class="admin-nav-link" data-page="adminDashboard"><i class="bi bi-speedometer2"></i><span>Ringkasan &amp; Statistik</span></a></li>
+      <li><a href="javascript:void(0)" onclick="navigateTo('adminProduk')" class="admin-nav-link" data-page="adminProduk"><i class="bi bi-box-seam"></i><span>Manajemen Produk</span></a></li>
+      <li><a href="javascript:void(0)" onclick="navigateTo('adminHero')" class="admin-nav-link" data-page="adminHero"><i class="bi bi-images"></i><span>Galeri Hero</span></a></li>
+      <li><a href="javascript:void(0)" onclick="navigateTo('adminFlyer')" class="admin-nav-link" data-page="adminFlyer"><i class="bi bi-megaphone"></i><span>Banner Promo</span></a></li>
+      <li><a href="javascript:void(0)" onclick="navigateTo('adminMitra')" class="admin-nav-link" data-page="adminMitra"><i class="bi bi-building"></i><span>Mitra Pemasaran</span></a></li>
+      <li><a href="javascript:void(0)" onclick="navigateTo('adminUmkm')" class="admin-nav-link" data-page="adminUmkm"><i class="bi bi-people"></i><span>Data UMKM</span></a></li>
+      <li><a href="javascript:void(0)" onclick="navigateTo('adminPembayaran')" class="admin-nav-link" data-page="adminPembayaran"><i class="bi bi-cash-coin"></i><span>Monitoring Pembayaran</span></a></li>
+      <li><a href="javascript:void(0)" onclick="navigateTo('adminSettings')" class="admin-nav-link" data-page="adminSettings"><i class="bi bi-gear"></i><span>Pengaturan WhatsApp &amp; Sistem</span></a></li>
+    </ul>
+    <div class="admin-sidebar-footer">
+      <button onclick="navigateTo('home')" class="admin-nav-link !text-[var(--secondary-fixed-dim)]"><i class="bi bi-eye"></i><span>Lihat Katalog Publik</span></button>
+      <button onclick="handleAdminLogout()" class="admin-nav-link !text-red-300"><i class="bi bi-box-arrow-left"></i><span>Keluar</span></button>
+    </div>
+  </nav>
+  <button id="adminSidebarToggle" class="admin-sidebar-toggle hidden" onclick="document.getElementById('adminSidebar').classList.toggle('show')"><i class="bi bi-list"></i></button>
+
+  <!-- =========== KONTAINER UTAMA SPA =========== -->
+  <main id="mainContent" class="main-content">
+    <div id="app-container"></div>
+  </main>
+
+  <footer id="publicFooter" class="public-footer">
+    <p class="italic" id="footerQuoteWrap">"<span id="footerQuoteText">Terimakasih telah membeli produk UMKM binaan CSR United Tractors, dengan demikian anda telah ikut berkontribusi memajukan UMKM Indonesia.</span>"</p>
+    <div class="footer-bottom">
+      <span>&copy; <span id="footerAppName">PortoUMKM</span> PPU UT Cakung. All rights reserved.</span>
+      <span id="footerContact"></span>
+    </div>
+  </footer>
+
+  <!-- Modal: Preview Foto Produk / Flyer -->
+  <div id="previewModal" class="modal-overlay hidden">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h5 id="previewModalTitle">Pratinjau</h5>
+        <button class="modal-close" onclick="closeModal('previewModal')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body text-center" id="previewModalContent"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Konfirmasi Hapus (Admin) -->
+  <div id="deleteModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h5>Konfirmasi Hapus</h5>
+        <button class="modal-close" onclick="closeModal('deleteModal')"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body"><p>Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.</p></div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="closeModal('deleteModal')">Batal</button>
+        <button class="btn-danger" id="confirmDeleteBtn">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- ============================================================
+       JavaScript - frontend statis murni, komunikasi ke backend GAS
+       lewat fetch() (lihat js/api.js). URUTAN FILE INI WAJIB TETAP
+       karena saling bergantung (config -> api -> state -> utils -> ...).
+       ============================================================ -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/customer.js"></script>
+  <script src="js/keranjang.js"></script>
+  <script src="js/admin-core.js"></script>
+  <script src="js/admin-produk.js"></script>
+  <script src="js/admin-lainnya.js"></script>
+  <script src="js/admin-settings.js"></script>
+  <script src="js/admin-pembayaran.js"></script>
+</body>
+</html>
