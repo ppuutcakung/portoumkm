@@ -23,7 +23,12 @@ function apiGet(action, params) {
     });
     if (AppState.sessionToken) qsObj.token = AppState.sessionToken;
     const qs = Object.keys(qsObj).map(function(k) { return encodeURIComponent(k) + '=' + encodeURIComponent(qsObj[k]); }).join('&');
-    return fetch(GAS_API_URL + '?' + qs)
+    // PENTING: credentials 'omit' - Web App GAS yang diset "Anyone" tidak
+    // butuh cookie sesi Google sama sekali. Kalau cookie ikut terkirim
+    // secara tidak sengaja pada request lintas-domain, redirect internal
+    // Google (script.google.com -> script.googleusercontent.com) bisa
+    // gagal dan balik sebagai 404/HTML alih-alih JSON.
+    return fetch(GAS_API_URL + '?' + qs, { redirect: 'follow', credentials: 'omit' })
         .then(function(res) { return res.json(); })
         .catch(function(err) {
             console.error('[apiGet] ' + action + ' gagal:', err);
@@ -46,7 +51,9 @@ function apiPost(action, data) {
     return fetch(GAS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: body
+        body: body,
+        redirect: 'follow',
+        credentials: 'omit'
     })
         .then(function(res) { return res.json(); })
         .catch(function(err) {
