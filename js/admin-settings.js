@@ -81,8 +81,51 @@ function renderAdminSettingsPage() {
       '</div>',
       '<button type="submit" class="btn-primary w-full" style="height:44px;"><i class="bi bi-check-lg"></i> Simpan Pengaturan</button>',
       '</form>',
+      '</div>',
+
+      '<div class="card p-4 md:p-5 mt-5" style="max-width:640px;">',
+      '<h3 class="font-bold mb-1" style="color:var(--text-primary)"><i class="bi bi-key"></i> Ubah Username &amp; Password Admin</h3>',
+      '<p class="text-xs mb-4" style="color:var(--text-muted)">Bisa diganti kapan saja secara berkala. Kosongkan kolom yang tidak ingin diubah.</p>',
+      '<form id="credentialsForm" onsubmit="submitCredentialsForm(event)">',
+      '<div class="form-group"><label class="form-label">Password Saat Ini *</label><input class="form-input" type="password" id="ccOldPassword" required autocomplete="current-password"></div>',
+      '<div class="form-group"><label class="form-label">Username Baru (opsional)</label><input class="form-input" id="ccNewUsername" autocomplete="username" placeholder="Kosongkan kalau tidak diubah"></div>',
+      '<div class="form-group"><label class="form-label">Password Baru (opsional)</label><input class="form-input" type="password" id="ccNewPassword" autocomplete="new-password" placeholder="Kosongkan kalau tidak diubah"></div>',
+      '<div class="form-group"><label class="form-label">Ulangi Password Baru</label><input class="form-input" type="password" id="ccConfirmPassword" autocomplete="new-password"></div>',
+      '<button type="submit" class="btn-primary w-full" style="height:44px;"><i class="bi bi-shield-lock"></i> Perbarui Kredensial</button>',
+      '</form>',
       '</div>'
     ].join(''));
+}
+function submitCredentialsForm(e) {
+    e.preventDefault();
+    const oldPassword = document.getElementById('ccOldPassword').value;
+    const newUsername = document.getElementById('ccNewUsername').value.trim();
+    const newPassword = document.getElementById('ccNewPassword').value;
+    const confirmPassword = document.getElementById('ccConfirmPassword').value;
+
+    if (!newUsername && !newPassword) {
+        showToast('Peringatan', 'Isi Username Baru atau Password Baru - minimal salah satu.', 'warning');
+        return;
+    }
+    if (newPassword && newPassword !== confirmPassword) {
+        showToast('Peringatan', 'Password Baru dan Ulangi Password Baru tidak sama.', 'warning');
+        return;
+    }
+    const btn = e.target.querySelector('button[type="submit"]');
+    const original = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-inline"></span> Memperbarui...';
+    btn.disabled = true;
+    apiPost('changeCredentials', { oldPassword: oldPassword, newUsername: newUsername, newPassword: newPassword }).then(function(res) {
+        btn.innerHTML = original;
+        btn.disabled = false;
+        if (!res.success) {
+            showToast('Gagal', res.message, 'danger');
+            return;
+        }
+        AppState.sessionToken = res.data.token; // sesi lama diganti otomatis oleh backend
+        showToast('Berhasil', 'Username/password berhasil diperbarui.', 'success');
+        document.getElementById('credentialsForm').reset();
+    });
 }
 /**
  * Hapus foto/berkas yang sudah diupload SEBELUM menyimpan pengaturan baru,
