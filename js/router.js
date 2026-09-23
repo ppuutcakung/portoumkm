@@ -17,18 +17,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         loadCartFromStorage();
-        apiGet('getAllConfig').then(res => {
+        // Satu permintaan gabungan (config + kategori) - bukan 2 permintaan
+        // terpisah yang datang bersamaan dengan permintaan Beranda lainnya.
+        apiGet('getInitData').then(res => {
             clearTimeout(safetyTimeout);
-            if (res.success) applyConfig(res.data);
-            else showToast('Error', 'Gagal memuat konfigurasi: ' + res.message, 'danger');
-
-            apiGet('getKategoriStruktur').then(kres => {
-                if (kres.success) {
-                    AppState.kategoriStruktur = kres.data;
-                    renderKategoriChipsGlobal();
-                }
-            });
-
+            if (res.success) {
+                applyConfig(res.data.config);
+                AppState.kategoriStruktur = res.data.kategoriStruktur;
+                renderKategoriChipsGlobal();
+            } else {
+                showToast('Error', 'Gagal memuat konfigurasi: ' + res.message, 'danger');
+            }
             navigateTo('home', { noHistory: true });
             hideLoadingOverlay();
         });

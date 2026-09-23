@@ -69,9 +69,7 @@ function renderHomePage() {
     ].join('');
 
     renderSectorCards();
-    loadHeroCarousel();
-    loadPromoBanner();
-    loadHomeProducts();
+    loadHomePageDataGabungan();
     const brosurBtn = document.getElementById('brosurPdfBtn');
     if (brosurBtn && AppState.config.brosurPdfUrl) brosurBtn.style.display = 'inline-flex';
 }
@@ -121,17 +119,6 @@ let heroCarouselItems = [];
 let heroCarouselIndex = 0;
 let heroCarouselTimer = null;
 
-function loadHeroCarousel() {
-    const cached = ambilDariCache('heroCarousel');
-    if (cached) { heroCarouselItems = cached; renderHeroCarousel(); return; }
-    apiGet('getHeroCarousel').then(function(res) {
-        const items = (res.success ? res.data : []).filter(function(p) { return p.FotoURL; });
-        heroCarouselItems = items.length ? items : [{ FotoURL: '', NamaProduk: 'PortoUMKM', ID: '' }];
-        simpanKeCache('heroCarousel', heroCarouselItems);
-        renderHeroCarousel();
-    });
-}
-
 function renderHeroCarousel() {
     const el = document.getElementById('heroCarousel');
     if (!el) return;
@@ -158,16 +145,6 @@ function goToHeroCarousel(i) { heroCarouselIndex = i; renderHeroCarousel(); }
 let promoBannerData = [];
 let promoBannerIndex = 0;
 let promoBannerTimer = null;
-
-function loadPromoBanner() {
-    const cached = ambilDariCache('promoBanner');
-    if (cached) { promoBannerData = cached; renderPromoBannerSlider(); return; }
-    apiGet('getFlyerAktif').then(function(res) {
-        promoBannerData = res.success ? res.data.slice(0, 3) : [];
-        simpanKeCache('promoBanner', promoBannerData);
-        renderPromoBannerSlider();
-    });
-}
 
 function renderPromoBannerSlider() {
     const el = document.getElementById('promoBannerSlider');
@@ -203,16 +180,50 @@ function renderPromoBannerSlider() {
 }
 function goToPromoBanner(i) { promoBannerIndex = i; renderPromoBannerSlider(); }
 
-function loadHomeProducts() {
-    const cached = ambilDariCache('homeProdukKategori');
-    if (cached) {
-        renderProductGrid('homeProductGridRasa', cached.PortoRasa || []);
-        renderProductGrid('homeProductGridKriya', cached.PortoKriya || []);
-        renderProductGrid('homeProductGridTani', cached.PortoTani || []);
+/**
+ * Muat SEMUA data Beranda (hero, banner promo, 3 baris katalog produk)
+ * lewat SATU permintaan gabungan (getHomePageData) - menggantikan 3
+ * permintaan terpisah yang sebelumnya datang bersamaan dan membuat Google
+ * Apps Script harus menyiapkan beberapa "mesin eksekusi" sekaligus
+ * (lambat, kadang sampai gagal). Cache per-bagian tetap dipakai supaya
+ * kunjungan berikutnya ke Beranda dalam beberapa menit tetap instan.
+ */
+function loadHomePageDataGabungan() {
+    const cachedHero = ambilDariCache('heroCarousel');
+    const cachedPromo = ambilDariCache('promoBanner');
+    const cachedProduk = ambilDariCache('homeProdukKategori');
+    if (cachedHero && cachedPromo && cachedProduk) {
+        heroCarouselItems = cachedHero;
+        renderHeroCarousel();
+        promoBannerData = cachedPromo;
+        renderPromoBannerSlider();
+        renderProductGrid('homeProductGridRasa', cachedProduk.PortoRasa || []);
+        renderProductGrid('homeProductGridKriya', cachedProduk.PortoKriya || []);
+        renderProductGrid('homeProductGridTani', cachedProduk.PortoTani || []);
         return;
     }
-    apiGet('getProdukUnggulanPerKategori', { perKategori: 4 }).then(function(res) {
-        const d = res.success ? res.data : { PortoRasa: [], PortoKriya: [], PortoTani: [] };
+    apiGet('getHomePageData', { perKategori: 4 }).then(function(res) {
+        if (!res.success) {
+            showToast('Error', 'Gagal memuat data Beranda: ' + res.message, 'danger');
+            heroCarouselItems = [{ FotoURL: '', NamaProduk: 'PortoUMKM', ID: '' }];
+            renderHeroCarousel();
+            promoBannerData = [];
+            renderPromoBannerSlider();
+            renderProductGrid('homeProductGridRasa', []);
+            renderProductGrid('homeProductGridKriya', []);
+            renderProductGrid('homeProductGridTani', []);
+            return;
+        }
+        const heroItems = (res.data.heroCarousel || []).filter(function(p) { return p.FotoURL; });
+        heroCarouselItems = heroItems.length ? heroItems : [{ FotoURL: '', NamaProduk: 'PortoUMKM', ID: '' }];
+        simpanKeCache('heroCarousel', heroCarouselItems);
+        renderHeroCarousel();
+
+        promoBannerData = (res.data.flyerAktif || []).slice(0, 3);
+        simpanKeCache('promoBanner', promoBannerData);
+        renderPromoBannerSlider();
+
+        const d = res.data.produkPerKategori || { PortoRasa: [], PortoKriya: [], PortoTani: [] };
         simpanKeCache('homeProdukKategori', d);
         renderProductGrid('homeProductGridRasa', d.PortoRasa || []);
         renderProductGrid('homeProductGridKriya', d.PortoKriya || []);
