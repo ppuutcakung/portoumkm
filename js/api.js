@@ -86,6 +86,29 @@ async function dbUpsertMany(table, records, conflictCol) {
     }
 }
 
+/** Hapus BANYAK baris sekaligus berdasarkan 1 filter kolom (mis. semua produk_paket milik 1 produk_id). */
+async function dbDeleteWhere(table, column, value) {
+    try {
+        const { error } = await supabaseClient.from(table).delete().eq(column, value);
+        if (error) return { success: false, data: null, message: error.message };
+        return { success: true, data: null, message: 'OK' };
+    } catch (err) {
+        return { success: false, data: null, message: 'Gagal terhubung ke server: ' + err.message };
+    }
+}
+
+/** Tambah BANYAK baris baru sekaligus dalam satu permintaan. */
+async function dbInsertMany(table, records) {
+    if (!records.length) return { success: true, data: [], message: 'OK' };
+    try {
+        const { data, error } = await supabaseClient.from(table).insert(records).select();
+        if (error) return { success: false, data: null, message: error.message };
+        return { success: true, data: data, message: 'OK' };
+    } catch (err) {
+        return { success: false, data: null, message: 'Gagal terhubung ke server: ' + err.message };
+    }
+}
+
 /** Panggil fungsi RPC khusus di database (logika bisnis kompleks: skor produk, checkout, dashboard, dll). */
 async function dbRpc(fnName, params) {
     try {

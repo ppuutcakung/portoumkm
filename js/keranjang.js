@@ -25,13 +25,20 @@ function updateCartBadge() {
         badge.classList.toggle('hidden', totalQty === 0);
     }
 }
-function addToCart(id, nama, harga, satuan, umkm, qty) {
+/**
+ * @param {string} [catatan] - pilihan paket / permintaan custom (opsional).
+ *   Item dengan id SAMA tapi catatan BEDA diperlakukan sebagai baris
+ *   terpisah di keranjang (mis. "Snack Box - Paket A" dan "Snack Box -
+ *   Paket B" dari produk yang sama, tidak digabung jadi satu baris).
+ */
+function addToCart(id, nama, harga, satuan, umkm, qty, catatan) {
     qty = qty || 1;
-    const existing = AppState.cart.find(i => i.id === id);
+    catatan = catatan || '';
+    const existing = AppState.cart.find(i => i.id === id && (i.catatan || '') === catatan);
     if (existing)
         existing.qty += qty;
     else
-        AppState.cart.push({ id, nama, hargaSatuan: harga, satuan, umkm, qty });
+        AppState.cart.push({ id, nama, hargaSatuan: harga, satuan, umkm, qty, catatan });
     saveCartToStorage();
     showToast('Ditambahkan', nama + ' masuk ke keranjang.', 'success');
 }
@@ -53,7 +60,7 @@ function renderCartItems() {
     const wrap = document.getElementById('cartItemsWrap');
     if (!wrap)
         return;
-    wrap.innerHTML = AppState.cart.map((item, idx) => ('\n    <div class="cart-item">\n      <div class="flex-1">\n        <div class="text-xs font-semibold" style="color:var(--primary)">' + (escapeHtml(item.umkm)) + '</div>\n        <div class="font-bold text-sm" style="color:var(--text-primary)">' + (escapeHtml(item.nama)) + '</div>\n        <div class="flex items-center justify-between mt-2 flex-wrap gap-2">\n          <div class="qty-stepper">\n            <button onclick="changeCartQty(' + (idx) + ', -1)">-</button>\n            <input type="number" min="1" class="qty-input" value="' + (item.qty) + '" onclick="event.stopPropagation()" onchange="setCartQty(' + (idx) + ', this.value)">\n            <button onclick="changeCartQty(' + (idx) + ', 1)">+</button>\n            <span class="px-2 text-xs" style="color:var(--text-muted)">' + (escapeHtml(item.satuan)) + '</span>\n          </div>\n          <div class="text-right">\n            <div class="text-xs" style="color:var(--text-muted)">' + (formatRupiah(item.hargaSatuan)) + ' / ' + (escapeHtml(item.satuan)) + '</div>\n            <div class="font-bold" style="color:var(--primary)">' + (formatRupiah(item.hargaSatuan * item.qty)) + '</div>\n          </div>\n        </div>\n      </div>\n      <button class="btn-icon-sm self-start" onclick="removeCartItem(' + (idx) + ')"><i class="bi bi-trash text-red-500"></i></button>\n    </div>\n  ')).join('');
+    wrap.innerHTML = AppState.cart.map((item, idx) => ('\n    <div class="cart-item">\n      <div class="flex-1">\n        <div class="text-xs font-semibold" style="color:var(--primary)">' + (escapeHtml(item.umkm)) + '</div>\n        <div class="font-bold text-sm" style="color:var(--text-primary)">' + (escapeHtml(item.nama)) + '</div>\n        ' + (item.catatan ? ('<div class="text-xs mt-0.5" style="color:var(--text-muted)"><i class="bi bi-info-circle"></i> ' + escapeHtml(item.catatan) + '</div>') : '') + '\n        <div class="flex items-center justify-between mt-2 flex-wrap gap-2">\n          <div class="qty-stepper">\n            <button onclick="changeCartQty(' + (idx) + ', -1)">-</button>\n            <input type="number" min="1" class="qty-input" value="' + (item.qty) + '" onclick="event.stopPropagation()" onchange="setCartQty(' + (idx) + ', this.value)">\n            <button onclick="changeCartQty(' + (idx) + ', 1)">+</button>\n            <span class="px-2 text-xs" style="color:var(--text-muted)">' + (escapeHtml(item.satuan)) + '</span>\n          </div>\n          <div class="text-right">\n            <div class="text-xs" style="color:var(--text-muted)">' + (formatRupiah(item.hargaSatuan)) + ' / ' + (escapeHtml(item.satuan)) + '</div>\n            <div class="font-bold" style="color:var(--primary)">' + (formatRupiah(item.hargaSatuan * item.qty)) + '</div>\n          </div>\n        </div>\n      </div>\n      <button class="btn-icon-sm self-start" onclick="removeCartItem(' + (idx) + ')"><i class="bi bi-trash text-red-500"></i></button>\n    </div>\n  ')).join('');
 }
 function changeCartQty(idx, delta) {
     AppState.cart[idx].qty = Math.max(1, AppState.cart[idx].qty + delta);
@@ -88,11 +95,11 @@ function handleCheckoutSubmit(e) {
         showToast('Peringatan', 'Keranjang masih kosong.', 'warning');
         return;
     }
-    const rincianTampilan = AppState.cart.map(i => (i.nama + ' x' + i.qty + i.satuan + '\n   UMKM: ' + i.umkm)).join('\n\n');
+    const rincianTampilan = AppState.cart.map(i => (i.nama + ' x' + i.qty + i.satuan + '\n   UMKM: ' + i.umkm + (i.catatan ? ('\n   Catatan: ' + i.catatan) : ''))).join('\n\n');
     const total = AppState.cart.reduce((s, i) => s + i.hargaSatuan * i.qty, 0);
     const items = AppState.cart.map(i => ({
         produk_id: i.id, nama_produk: i.nama, nama_umkm: i.umkm,
-        qty: i.qty, satuan: i.satuan, harga_satuan: i.hargaSatuan
+        qty: i.qty, satuan: i.satuan, harga_satuan: i.hargaSatuan, catatan: i.catatan || ''
     }));
     const btn = e.target.querySelector('button[type="submit"]');
     const original = btn.innerHTML;

@@ -288,11 +288,106 @@ function productCardHtml(p) {
       hargaPromo ? ('<span class="price-old">' + formatRupiah(hargaNormal) + '</span>') : '',
       '</div>',
       '<div class="product-card-footer" onclick="event.stopPropagation()">',
-      '<button class="btn-primary flex-1" onclick="addToCart(\'' + produkId + '\',\'' + escapeHtml(namaProduk).replace(/'/g, "\\'") + '\',' + hargaTampil + ',\'' + escapeHtml(satuan).replace(/'/g, "\\'") + '\',\'' + escapeHtml(namaUMKM).replace(/'/g, "\\'") + '\')"><i class="bi bi-cart-plus"></i> Keranjang</button>',
+      tombolKeranjangHtml(p.tipe_pemesanan, produkId, namaProduk, hargaTampil, satuan, namaUMKM),
       (waLinkHref(namaProduk, namaUMKM, hargaTampil) ? ('<a class="btn-icon-sm" href="' + waLinkHref(namaProduk, namaUMKM, hargaTampil) + '" target="_blank" rel="noopener" title="Tanya via WA"><i class="bi bi-whatsapp"></i></a>') : ''),
       '</div>',
       '</div>'
     ].join('');
+}
+/**
+ * Tombol keranjang bercabang sesuai tipe_pemesanan produk:
+ * - 'Paket'  -> buka popup pilih varian paket dulu, baru masuk keranjang
+ * - 'Custom' -> buka popup isi budget + menu custom (opsional) dulu
+ * - lainnya ('Standar')  -> langsung masuk keranjang seperti biasa
+ */
+function tombolKeranjangHtml(tipePemesanan, produkId, namaProduk, harga, satuan, namaUMKM) {
+    const namaEsc = escapeHtml(namaProduk).replace(/'/g, "\\'");
+    const satuanEsc = escapeHtml(satuan).replace(/'/g, "\\'");
+    const umkmEsc = escapeHtml(namaUMKM).replace(/'/g, "\\'");
+    if (tipePemesanan === 'Paket') {
+        return '<button class="btn-primary flex-1" onclick="bukaPilihPaket(\'' + produkId + '\')"><i class="bi bi-list-check"></i> Pilih Paket</button>';
+    }
+    if (tipePemesanan === 'Custom') {
+        return '<button class="btn-primary flex-1" onclick="bukaPesananCustom(\'' + produkId + '\',\'' + namaEsc + '\',' + harga + ',\'' + satuanEsc + '\',\'' + umkmEsc + '\')"><i class="bi bi-pencil-square"></i> Pesan Custom</button>';
+    }
+    return '<button class="btn-primary flex-1" onclick="addToCart(\'' + produkId + '\',\'' + namaEsc + '\',' + harga + ',\'' + satuanEsc + '\',\'' + umkmEsc + '\')"><i class="bi bi-cart-plus"></i> Keranjang</button>';
+}
+
+// -------------------- POPUP PILIH PAKET --------------------
+function bukaPilihPaket(produkId) {
+    document.getElementById('previewModalTitle').textContent = 'Pilih Paket';
+    document.getElementById('previewModalContent').innerHTML = '<div class="empty-state"><div class="spinner-brand" style="margin:0 auto;"></div></div>';
+    openModal('previewModal');
+    Promise.all([
+        dbSelect('produk', { eq: { id: produkId }, single: true }),
+        dbRpc('get_produk_paket', { p_produk_id: produkId })
+    ]).then(function(results) {
+        const produkRes = results[0], paketRes = results[1];
+        if (!produkRes.success) {
+            document.getElementById('previewModalContent').innerHTML = '<p class="text-sm" style="color:var(--text-muted)">Gagal memuat data produk: ' + escapeHtml(produkRes.message) + '</p>';
+            return;
+        }
+        const p = produkRes.data;
+        const pakets = (paketRes.success && paketRes.data) ? paketRes.data : [];
+        if (!pakets.length) {
+            document.getElementById('previewModalContent').innerHTML = '<p class="text-sm" style="color:var(--text-muted)">Belum ada paket tersedia untuk produk ini. Silakan hubungi Admin.</p>';
+            return;
+        }
+        const hargaDasar = (p.harga_promo !== '' && p.harga_promo != null) ? Number(p.harga_promo) : Number(p.harga_normal) || 0;
+        document.getElementById('previewModalContent').innerHTML = '<div class="text-left">' +
+            pakets.map(function(pk) {
+                const harga = (pk.harga !== null && pk.harga !== undefined && pk.harga !== '') ? Number(pk.harga) : hargaDasar;
+                const onclickArgs = [p.id, p.nama_produk, pk.nama_paket, harga, p.satuan, p.nama_umkm, pk.deskripsi_menu || ''].map(function(v) { return JSON.stringify(v); }).join(',');
+                return [
+                  '<div class="card p-3 mb-2" style="cursor:pointer;" onclick=\'pilihPaketDanTambahKeranjang(' + onclickArgs + ')\'>',
+                  '<div class="font-bold" style="color:var(--text-primary)">' + escapeHtml(pk.nama_paket) + '</div>',
+                  pk.deskripsi_menu ? ('<div class="text-xs mt-1" style="color:var(--text-muted)">' + escapeHtml(pk.deskripsi_menu) + '</div>') : '',
+                  '<div class="font-bold mt-2" style="color:var(--primary)">' + formatRupiah(harga) + ' <span class="text-xs font-normal" style="color:var(--text-muted)">/ ' + escapeHtml(p.satuan) + '</span></div>',
+                  '</div>'
+                ].join('');
+            }).join('') +
+            '</div>';
+    });
+}
+function pilihPaketDanTambahKeranjang(produkId, namaProduk, namaPaket, harga, satuan, umkm, deskripsiMenu) {
+    addToCart(produkId, namaProduk + ' - ' + namaPaket, harga, satuan, umkm, 1, deskripsiMenu);
+    closeModal('previewModal');
+}
+
+// -------------------- POPUP PESANAN CUSTOM --------------------
+function bukaPesananCustom(produkId, namaProduk, hargaDasar, satuan, umkm) {
+    document.getElementById('previewModalTitle').textContent = 'Pesanan Custom';
+    document.getElementById('previewModalContent').innerHTML = [
+      '<form onsubmit="submitPesananCustom(event)" class="text-left">',
+      '<input type="hidden" id="cuProdukId" value="', produkId, '">',
+      '<input type="hidden" id="cuNamaProduk" value="', escapeHtml(namaProduk), '">',
+      '<input type="hidden" id="cuHargaDasar" value="', hargaDasar, '">',
+      '<input type="hidden" id="cuSatuan" value="', escapeHtml(satuan), '">',
+      '<input type="hidden" id="cuUmkm" value="', escapeHtml(umkm), '">',
+      '<p class="font-bold mb-1" style="color:var(--text-primary)">' + escapeHtml(namaProduk) + '</p>',
+      '<p class="text-xs mb-3" style="color:var(--text-muted)">Kosongkan kalau tidak ada permintaan khusus - bisa didiskusikan langsung lewat WhatsApp setelah pesanan dikirim.</p>',
+      '<div class="form-group"><label class="form-label">Budget per ', escapeHtml(satuan), ' (Rp) - opsional</label><input class="form-input" type="number" id="cuBudget" placeholder="mis. 25000"></div>',
+      '<div class="form-group"><label class="form-label">Menu yang Diinginkan - opsional</label><textarea class="form-textarea" id="cuMenu" placeholder="mis. nasi goreng seafood, tanpa pedas"></textarea></div>',
+      '<button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-cart-plus"></i> Tambahkan ke Keranjang</button>',
+      '</form>'
+    ].join('');
+    openModal('previewModal');
+}
+function submitPesananCustom(e) {
+    e.preventDefault();
+    const produkId = document.getElementById('cuProdukId').value;
+    const namaProduk = document.getElementById('cuNamaProduk').value;
+    const hargaDasar = Number(document.getElementById('cuHargaDasar').value) || 0;
+    const satuan = document.getElementById('cuSatuan').value;
+    const umkm = document.getElementById('cuUmkm').value;
+    const budget = document.getElementById('cuBudget').value;
+    const menu = document.getElementById('cuMenu').value.trim();
+    const harga = budget ? Number(budget) : hargaDasar;
+    let catatan = '';
+    if (budget) catatan += 'Budget: ' + formatRupiah(Number(budget)) + '/' + satuan;
+    if (menu) catatan += (catatan ? ' | ' : '') + 'Menu: ' + menu;
+    addToCart(produkId, namaProduk, harga, satuan, umkm, 1, catatan);
+    closeModal('previewModal');
 }
 function previewImage(url, title) {
     if (!url)
@@ -505,7 +600,7 @@ function renderProdukDetailPage(produkId) {
           '<span id="detailQty">1</span>',
           '<button onclick="stepDetailQty(1)">+</button>',
           '</div>',
-          '<button class="btn-primary" style="height:44px; padding:0 20px;" onclick="addToCartFromDetail(\'' + p.id + '\',\'' + escapeHtml(p.nama_produk).replace(/'/g, "\\'") + '\',' + hargaTampil + ',\'' + escapeHtml(p.satuan || 'pcs') + '\',\'' + escapeHtml(p.nama_umkm).replace(/'/g, "\\'") + '\')"><i class="bi bi-cart-plus"></i> Tambah ke Keranjang</button>',
+          tombolKeranjangDetailHtml(p, hargaTampil),
           '<a class="btn-wa" style="height:44px; padding:0 20px;" href="' + waLinkHref(p.nama_produk, p.nama_umkm, hargaTampil) + '" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Tanya Admin</a>',
           '</div>',
           '</div>',
@@ -528,4 +623,18 @@ function stepDetailQty(delta) {
 function addToCartFromDetail(id, nama, harga, satuan, umkm) {
     addToCart(id, nama, harga, satuan, umkm, detailQty);
     detailQty = 1;
+}
+/** Sama seperti tombolKeranjangHtml() di kartu produk, versi untuk halaman Detail Produk (qty lewat qty-stepper). */
+function tombolKeranjangDetailHtml(p, hargaTampil) {
+    const produkId = String(p.id || '');
+    const namaEsc = escapeHtml(p.nama_produk).replace(/'/g, "\\'");
+    const satuanEsc = escapeHtml(p.satuan || 'pcs').replace(/'/g, "\\'");
+    const umkmEsc = escapeHtml(p.nama_umkm).replace(/'/g, "\\'");
+    if (p.tipe_pemesanan === 'Paket') {
+        return '<button class="btn-primary" style="height:44px; padding:0 20px;" onclick="bukaPilihPaket(\'' + produkId + '\')"><i class="bi bi-list-check"></i> Pilih Paket</button>';
+    }
+    if (p.tipe_pemesanan === 'Custom') {
+        return '<button class="btn-primary" style="height:44px; padding:0 20px;" onclick="bukaPesananCustom(\'' + produkId + '\',\'' + namaEsc + '\',' + hargaTampil + ',\'' + satuanEsc + '\',\'' + umkmEsc + '\')"><i class="bi bi-pencil-square"></i> Pesan Custom</button>';
+    }
+    return '<button class="btn-primary" style="height:44px; padding:0 20px;" onclick="addToCartFromDetail(\'' + produkId + '\',\'' + namaEsc + '\',' + hargaTampil + ',\'' + satuanEsc + '\',\'' + umkmEsc + '\')"><i class="bi bi-cart-plus"></i> Tambah ke Keranjang</button>';
 }

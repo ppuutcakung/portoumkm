@@ -144,6 +144,21 @@ function openProdukForm(p) {
       '<div class="form-group"><label class="form-label">Sub-kategori</label><select class="form-select" id="pfSubKategori"></select></div>',
       '</div>',
       '<hr style="border-color:var(--border-color); margin:14px 0;">',
+      '<p class="text-xs font-bold uppercase mb-2" style="color:var(--text-muted)">Cara Pemesanan</p>',
+      '<div class="form-group">',
+      '<label class="form-label">Tipe Pemesanan</label>',
+      '<select class="form-select" id="pfTipePemesanan" onchange="toggleBagianPaket(this.value)">',
+      '<option value="Standar" ', (p.tipe_pemesanan === 'Standar' || !p.tipe_pemesanan ? 'selected' : ''), '>Standar - langsung masuk keranjang</option>',
+      '<option value="Paket" ', (p.tipe_pemesanan === 'Paket' ? 'selected' : ''), '>Paket - customer pilih salah satu varian menu dulu</option>',
+      '<option value="Custom" ', (p.tipe_pemesanan === 'Custom' ? 'selected' : ''), '>Custom - customer isi budget &amp; menu sendiri</option>',
+      '</select>',
+      '</div>',
+      '<div id="pfPaketSection" class="', (p.tipe_pemesanan === 'Paket' ? '' : 'hidden'), '">',
+      '<label class="form-label">Daftar Paket</label>',
+      '<div id="pfPaketRows"></div>',
+      '<button type="button" class="btn-ghost w-full mb-3" onclick="tambahBarisPaket()"><i class="bi bi-plus-lg"></i> Tambah Paket</button>',
+      '</div>',
+      '<hr style="border-color:var(--border-color); margin:14px 0;">',
       '<p class="text-xs font-bold uppercase mb-2" style="color:var(--text-muted)">Badge &amp; Rating (opsional, tampil di Kartu Produk)</p>',
       '<div class="form-group"><label class="form-label">Badge/Label</label><input class="form-input" id="pfBadge" value="', escapeHtml(p.badge || ''), '" placeholder="mis. Hemat B2B, Fresh Roast, Ready Stock"></div>',
       '<div class="grid grid-cols-2 gap-3">',
@@ -168,7 +183,53 @@ function openProdukForm(p) {
       '</form>'
     ].join('');
     renderSubKategoriOptions(p.kategori || Object.keys(struk)[0], p.sub_kategori);
+    pfPaketRows = [];
+    if (p.id && p.tipe_pemesanan === 'Paket') {
+        dbSelect('produk_paket', { eq: { produk_id: p.id }, order: 'urutan' }).then(function(res) {
+            pfPaketRows = res.success ? res.data.map(function(pk) { return { nama_paket: pk.nama_paket, deskripsi_menu: pk.deskripsi_menu || '', harga: pk.harga }; }) : [];
+            renderBarisPaket();
+        });
+    } else {
+        renderBarisPaket();
+    }
     openModal('previewModal');
+}
+/**
+ * Pengelolaan baris Daftar Paket (tipe_pemesanan = 'Paket') - dikelola
+ * sebagai array di memori selagi form terbuka, baru disinkronkan ke tabel
+ * produk_paket saat Simpan Produk diklik (lihat submitProdukForm).
+ */
+let pfPaketRows = [];
+function toggleBagianPaket(tipe) {
+    const section = document.getElementById('pfPaketSection');
+    if (!section) return;
+    section.classList.toggle('hidden', tipe !== 'Paket');
+    if (tipe === 'Paket' && !pfPaketRows.length) tambahBarisPaket();
+}
+function tambahBarisPaket() {
+    pfPaketRows.push({ nama_paket: '', deskripsi_menu: '', harga: '' });
+    renderBarisPaket();
+}
+function hapusBarisPaket(idx) {
+    pfPaketRows.splice(idx, 1);
+    renderBarisPaket();
+}
+function ubahBarisPaket(idx, field, value) {
+    pfPaketRows[idx][field] = value;
+}
+function renderBarisPaket() {
+    const wrap = document.getElementById('pfPaketRows');
+    if (!wrap) return;
+    wrap.innerHTML = pfPaketRows.map(function(row, idx) {
+        return [
+          '<div class="card p-3 mb-2" style="position:relative;">',
+          '<button type="button" class="btn-icon-sm" style="position:absolute; top:6px; right:6px;" onclick="hapusBarisPaket(' + idx + ')" title="Hapus paket ini"><i class="bi bi-trash text-red-500"></i></button>',
+          '<div class="form-group" style="margin-bottom:8px;"><label class="form-label">Nama Paket</label><input class="form-input" value="' + escapeHtml(row.nama_paket) + '" oninput="ubahBarisPaket(' + idx + ',\'nama_paket\',this.value)" placeholder="mis. Paket A"></div>',
+          '<div class="form-group" style="margin-bottom:8px;"><label class="form-label">Isi Menu</label><textarea class="form-textarea" oninput="ubahBarisPaket(' + idx + ',\'deskripsi_menu\',this.value)" placeholder="mis. Nasi kuning, ayam goreng, sambal, kerupuk">' + escapeHtml(row.deskripsi_menu) + '</textarea></div>',
+          '<div class="form-group" style="margin-bottom:0;"><label class="form-label">Harga Khusus Paket Ini (Rp) - opsional</label><input class="form-input" type="number" value="' + (row.harga == null ? '' : row.harga) + '" oninput="ubahBarisPaket(' + idx + ',\'harga\',this.value)" placeholder="Kosongkan = pakai Harga Normal produk"></div>',
+          '</div>'
+        ].join('');
+    }).join('') || '<p class="text-xs" style="color:var(--text-muted)">Belum ada paket. Klik "Tambah Paket" di bawah.</p>';
 }
 function renderSubKategoriOptions(kategoriKey, selected) {
     const struk = AppState.kategoriStruktur || {};
@@ -202,7 +263,8 @@ function submitProdukForm(e) {
         badge: document.getElementById('pfBadge').value.trim(),
         rating: document.getElementById('pfRating').value ? Number(document.getElementById('pfRating').value) : 0,
         jumlah_ulasan: document.getElementById('pfJumlahUlasan').value ? Number(document.getElementById('pfJumlahUlasan').value) : 0,
-        status: document.getElementById('pfStatus').value
+        status: document.getElementById('pfStatus').value,
+        tipe_pemesanan: document.getElementById('pfTipePemesanan').value
     };
     const produkId = document.getElementById('pfId').value || null;
     const btn = e.target.querySelector('button[type="submit"]');
@@ -210,16 +272,42 @@ function submitProdukForm(e) {
     btn.innerHTML = '<span class="spinner-inline"></span> Menyimpan...';
     btn.disabled = true;
 
+    /** Sinkronkan daftar paket (tabel produk_paket) setelah produk induk tersimpan. */
+    const syncPaket = (finalProdukId) => {
+        return dbDeleteWhere('produk_paket', 'produk_id', finalProdukId).then(function() {
+            if (record.tipe_pemesanan !== 'Paket') return { success: true };
+            const rows = pfPaketRows
+                .filter(function(r) { return r.nama_paket.trim(); })
+                .map(function(r) {
+                    return {
+                        produk_id: finalProdukId, nama_paket: r.nama_paket.trim(),
+                        deskripsi_menu: (r.deskripsi_menu || '').trim(),
+                        harga: r.harga === '' || r.harga == null ? null : Number(r.harga),
+                        urutan: pfPaketRows.indexOf(r) + 1
+                    };
+                });
+            return dbInsertMany('produk_paket', rows);
+        });
+    };
+
     const finishSave = () => {
         const promise = produkId ? dbUpdate('produk', produkId, record) : dbInsert('produk', record);
         promise.then(function(res) {
-            btn.innerHTML = original;
-            btn.disabled = false;
-            if (!res.success) { showToast('Gagal', res.message, 'danger'); return; }
-            AppState.cache = {};
-            showToast('Berhasil', res.message, 'success');
-            closeModal('previewModal');
-            loadAdminProduk();
+            if (!res.success) {
+                btn.innerHTML = original;
+                btn.disabled = false;
+                showToast('Gagal', res.message, 'danger');
+                return;
+            }
+            const finalProdukId = produkId || res.data.id;
+            syncPaket(finalProdukId).then(function() {
+                btn.innerHTML = original;
+                btn.disabled = false;
+                AppState.cache = {};
+                showToast('Berhasil', res.message, 'success');
+                closeModal('previewModal');
+                loadAdminProduk();
+            });
         });
     };
 
