@@ -158,7 +158,50 @@ async function authUpdateUser(updates) {
  * @param {File} file
  * @param {string} folderKey - key di tabel app_config, mis. 'uploadFolderId'
  */
+/**
+ * Ubah file gambar (File atau Blob) jadi format WebP lewat Canvas bawaan
+ * browser - supaya ukuran file lebih kecil dan loading lebih cepat.
+ * File yang BUKAN gambar (mis. PDF brosur) atau yang SUDAH WebP dilewati
+ * apa adanya. Kalau konversi gagal karena alasan apapun, file ASLI dipakai
+ * sebagai fallback aman (upload tetap jalan, cuma tidak terkonversi).
+ */
+function convertToWebP(fileOrBlob, namaFile) {
+    return new Promise(function(resolve) {
+        const tipe = fileOrBlob.type || '';
+        if (!tipe.startsWith('image/') || tipe === 'image/webp') {
+            resolve(fileOrBlob);
+            return;
+        }
+        const img = new Image();
+        const url = URL.createObjectURL(fileOrBlob);
+        img.onload = function() {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+                canvas.toBlob(function(blob) {
+                    if (!blob) { resolve(fileOrBlob); return; }
+                    const namaBaru = (namaFile || fileOrBlob.name || 'foto').replace(/\.[^.]+$/, '') + '.webp';
+                    resolve(new File([blob], namaBaru, { type: 'image/webp' }));
+                }, 'image/webp', 0.85);
+            } catch (err) {
+                URL.revokeObjectURL(url);
+                resolve(fileOrBlob);
+            }
+        };
+        img.onerror = function() {
+            URL.revokeObjectURL(url);
+            resolve(fileOrBlob);
+        };
+        img.src = url;
+    });
+}
+
 async function uploadFile(file, folderKey) {
+    const fileUntukDiunggah = await convertToWebP(file, file.name);
     return new Promise(function(resolve) {
         const reader = new FileReader();
         reader.onload = async function() {
@@ -171,7 +214,7 @@ async function uploadFile(file, folderKey) {
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + (session ? session.access_token : SUPABASE_ANON_KEY)
                     },
-                    body: JSON.stringify({ fileData: base64, fileName: file.name, mimeType: file.type, folderKey: folderKey })
+                    body: JSON.stringify({ fileData: base64, fileName: fileUntukDiunggah.name, mimeType: fileUntukDiunggah.type, folderKey: folderKey })
                 });
                 const json = await res.json();
                 resolve(json);
@@ -182,7 +225,7 @@ async function uploadFile(file, folderKey) {
         reader.onerror = function() {
             resolve({ success: false, data: null, message: 'Gagal membaca file di browser.' });
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(fileUntukDiunggah);
     });
 }
 /** @param {string} fileId - ID file Google Drive (bukan path/URL) */

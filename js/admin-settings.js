@@ -90,8 +90,151 @@ function renderAdminSettingsPage() {
       '<div class="form-group"><label class="form-label">Ulangi Password Baru *</label><input class="form-input" type="password" id="ccConfirmPassword" required autocomplete="new-password"></div>',
       '<button type="submit" class="btn-primary w-full" style="height:44px;"><i class="bi bi-shield-lock"></i> Perbarui Password</button>',
       '</form>',
+      '</div>',
+
+      '<div class="card p-4 md:p-5 mt-5" style="max-width:640px;">',
+      '<h3 class="font-bold mb-1" style="color:var(--text-primary)"><i class="bi bi-file-earmark-image"></i> Konversi Foto Lama ke WebP</h3>',
+      '<p class="text-xs mb-4" style="color:var(--text-muted)">Foto yang diunggah BARU sudah otomatis jadi WebP. Klik ini SEKALI untuk mengonversi foto-foto LAMA yang masih format lain (JPG/PNG), supaya loading lebih cepat. Proses berjalan satu-satu, bisa makan waktu beberapa menit kalau foto cukup banyak - jangan tutup tab selama proses berjalan.</p>',
+      '<button type="button" class="btn-primary w-full" style="height:44px;" id="btnKonversiWebp" onclick="konversiSemuaFotoLama()"><i class="bi bi-arrow-repeat"></i> Mulai Konversi</button>',
+      '<div id="konversiWebpProgress" class="text-xs mt-2" style="color:var(--text-muted)"></div>',
       '</div>'
     ].join(''));
+}
+
+/**
+ * Konversi SEKALI JALAN semua foto lama (Produk, Hero, Flyer, Mitra, Logo,
+ * Gambar Sektor) yang belum berformat WebP. Untuk tiap foto: diunduh,
+ * dikonversi lewat Canvas, diunggah ulang sebagai .webp, record di database
+ * diperbarui ke URL baru, lalu file LAMA dihapus dari Drive.
+ */
+async function konversiSemuaFotoLama() {
+    const btn = document.getElementById('btnKonversiWebp');
+    const progressEl = document.getElementById('konversiWebpProgress');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline"></span> Memproses...';
+
+    function log(msg) { progressEl.innerHTML += (progressEl.innerHTML ? '<br>' : '') + msg; }
+
+    /** @returns {Promise<{berhasil:boolean, urlBaru?:string, fileIdBaru?:string}>} */
+    async function konversiSatuGambar(url, folderKey) {
+        try {
+            const res = await fetch(url);
+            const blob = await res.blob();
+            if (blob.type === 'image/webp') return { berhasil: false, sudahWebp: true };
+            const webpFile = await convertToWebP(blob, 'foto.jpg');
+            if (webpFile.type !== 'image/webp') return { berhasil: false }; // konversi gagal, fallback ke file asli (bukan webp)
+            const uploadRes = await uploadFile(webpFile, folderKey);
+            if (!uploadRes.success) return { berhasil: false };
+            return { berhasil: true, urlBaru: uploadRes.data.url, fileIdBaru: uploadRes.data.fileId };
+        } catch (err) {
+            return { berhasil: false };
+        }
+    }
+
+    let totalDiproses = 0, totalBerhasil = 0, totalDilewati = 0;
+
+    // --- Produk (foto_url & foto_url2) ---
+    const produkRes = await dbSelect('produk');
+    const produkList = produkRes.success ? produkRes.data : [];
+    for (const p of produkList) {
+        for (const pasangan of [['foto_url', 'foto_path'], ['foto_url2', 'foto_path2']]) {
+            const [urlKey, pathKey] = pasangan;
+            if (!p[urlKey]) continue;
+            totalDiproses++;
+            const hasil = await konversiSatuGambar(p[urlKey], 'uploadFolderId');
+            if (hasil.sudahWebp) { totalDilewati++; continue; }
+            if (hasil.berhasil) {
+                const fileIdLama = p[pathKey];
+                await dbUpdate('produk', p.id, { [urlKey]: hasil.urlBaru, [pathKey]: hasil.fileIdBaru });
+                if (fileIdLama) await deleteFile(fileIdLama);
+                totalBerhasil++;
+                log('✓ Produk: ' + escapeHtml(p.nama_produk));
+            }
+        }
+    }
+
+    // --- Hero Carousel ---
+    const heroRes = await dbSelect('hero_carousel');
+    for (const h of (heroRes.success ? heroRes.data : [])) {
+        if (!h.foto_url) continue;
+        totalDiproses++;
+        const hasil = await konversiSatuGambar(h.foto_url, 'heroFolderId');
+        if (hasil.sudahWebp) { totalDilewati++; continue; }
+        if (hasil.berhasil) {
+            const fileIdLama = h.foto_path;
+            await dbUpdate('hero_carousel', h.id, { foto_url: hasil.urlBaru, foto_path: hasil.fileIdBaru });
+            if (fileIdLama) await deleteFile(fileIdLama);
+            totalBerhasil++;
+            log('✓ Hero Carousel');
+        }
+    }
+
+    // --- Flyer Promo ---
+    const flyerRes = await dbSelect('flyer_promo');
+    for (const f of (flyerRes.success ? flyerRes.data : [])) {
+        if (!f.gambar_url) continue;
+        totalDiproses++;
+        const hasil = await konversiSatuGambar(f.gambar_url, 'flyerFolderId');
+        if (hasil.sudahWebp) { totalDilewati++; continue; }
+        if (hasil.berhasil) {
+            const fileIdLama = f.gambar_path;
+            await dbUpdate('flyer_promo', f.id, { gambar_url: hasil.urlBaru, gambar_path: hasil.fileIdBaru });
+            if (fileIdLama) await deleteFile(fileIdLama);
+            totalBerhasil++;
+            log('✓ Flyer: ' + escapeHtml(f.judul));
+        }
+    }
+
+    // --- Mitra Pemasaran ---
+    const mitraRes = await dbSelect('mitra_pemasaran');
+    for (const m of (mitraRes.success ? mitraRes.data : [])) {
+        if (!m.logo_url) continue;
+        totalDiproses++;
+        const hasil = await konversiSatuGambar(m.logo_url, 'mitraFolderId');
+        if (hasil.sudahWebp) { totalDilewati++; continue; }
+        if (hasil.berhasil) {
+            const fileIdLama = m.logo_path;
+            await dbUpdate('mitra_pemasaran', m.id, { logo_url: hasil.urlBaru, logo_path: hasil.fileIdBaru });
+            if (fileIdLama) await deleteFile(fileIdLama);
+            totalBerhasil++;
+            log('✓ Mitra: ' + escapeHtml(m.nama_perusahaan));
+        }
+    }
+
+    // --- Logo & Gambar Sektor (tersimpan di app_config) ---
+    const cfg = AppState.config;
+    const configImagePairs = [
+        ['logoUrl', 'logoPath', 'logoFolderId'],
+        ['sectorImgPortoRasa', 'sectorImgPortoRasaPath', 'uploadFolderId'],
+        ['sectorImgPortoKriya', 'sectorImgPortoKriyaPath', 'uploadFolderId'],
+        ['sectorImgPortoTani', 'sectorImgPortoTaniPath', 'uploadFolderId']
+    ];
+    const configUpdates = {};
+    for (const [urlKey, pathKey, folderKey] of configImagePairs) {
+        if (!cfg[urlKey]) continue;
+        totalDiproses++;
+        const hasil = await konversiSatuGambar(cfg[urlKey], folderKey);
+        if (hasil.sudahWebp) { totalDilewati++; continue; }
+        if (hasil.berhasil) {
+            const fileIdLama = cfg[pathKey];
+            configUpdates[urlKey] = hasil.urlBaru;
+            configUpdates[pathKey] = hasil.fileIdBaru;
+            if (fileIdLama) await deleteFile(fileIdLama);
+            totalBerhasil++;
+            log('✓ Pengaturan: ' + urlKey);
+        }
+    }
+    if (Object.keys(configUpdates).length) {
+        const records = Object.keys(configUpdates).map(function(key) { return { key: key, value: String(configUpdates[key]) }; });
+        await dbUpsertMany('app_config', records, 'key');
+        Object.assign(AppState.config, configUpdates);
+    }
+
+    AppState.cache = {};
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Mulai Konversi';
+    log('<b>Selesai.</b> Diproses: ' + totalDiproses + ', berhasil dikonversi: ' + totalBerhasil + ', sudah WebP sebelumnya (dilewati): ' + totalDilewati + '.');
+    showToast('Selesai', totalBerhasil + ' foto berhasil dikonversi ke WebP.', 'success');
 }
 /**
  * Hapus foto/berkas yang sudah diupload SEBELUM menyimpan pengaturan baru.

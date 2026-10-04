@@ -5,10 +5,36 @@
  */
 let adminProdukCache = [];
 let umkmListCache = [];
+const ADMIN_PRODUK_PER_HALAMAN = 25;
+let adminProdukFilterKategori = 'Semua';
+let adminProdukHalaman = 1;
+
 function renderAdminProdukPage() {
     const container = document.getElementById('app-container');
-    container.innerHTML = adminPageShell('Manajemen Produk (CRUD)', '\n    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">\n      <div class="search-box" style="width:280px;"><i class="bi bi-search"></i><input id="adminProdukSearch" placeholder="Cari produk..." oninput="filterAdminProduk()"></div>\n      <button class="btn-primary" onclick="openProdukForm()"><i class="bi bi-plus-lg"></i> Tambah Produk</button>\n    </div>\n    <div class="table-wrap">\n      <table class="data-table">\n        <thead><tr><th>Foto</th><th>Nama Produk</th><th>UMKM</th><th>Kategori</th><th>Harga</th><th>Status</th><th></th></tr></thead>\n        <tbody id="adminProdukTbody"><tr><td colspan="7" class="text-center py-4">Memuat...</td></tr></tbody>\n      </table>\n    </div>\n  ');
+    container.innerHTML = adminPageShell('Manajemen Produk (CRUD)', '\n    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">\n      <div class="search-box" style="width:280px;"><i class="bi bi-search"></i><input id="adminProdukSearch" placeholder="Cari produk..." oninput="filterAdminProduk()"></div>\n      <button class="btn-primary" onclick="openProdukForm()"><i class="bi bi-plus-lg"></i> Tambah Produk</button>\n    </div>\n    <div class="flex flex-wrap gap-2 mb-3" id="adminProdukKategoriChips"></div>\n    <div class="table-wrap">\n      <table class="data-table">\n        <thead><tr><th>Foto</th><th>Nama Produk</th><th>UMKM</th><th>Kategori</th><th>Harga</th><th>Status</th><th></th></tr></thead>\n        <tbody id="adminProdukTbody"><tr><td colspan="7" class="text-center py-4">Memuat...</td></tr></tbody>\n      </table>\n    </div>\n    <div id="adminProdukPagination" class="pagination"></div>\n  ');
+    adminProdukFilterKategori = 'Semua';
+    adminProdukHalaman = 1;
+    renderAdminProdukKategoriChips();
     loadAdminProduk();
+}
+function renderAdminProdukKategoriChips() {
+    const chipsList = [
+        { key: 'Semua', label: 'Semua Kategori' },
+        { key: 'PortoRasa', label: 'Kuliner' },
+        { key: 'PortoKriya', label: 'Kerajinan' },
+        { key: 'PortoTani', label: 'Pertanian' }
+    ];
+    const wrap = document.getElementById('adminProdukKategoriChips');
+    if (!wrap) return;
+    wrap.innerHTML = chipsList.map(function(c) {
+        return '<button class="chip chip-solid ' + (adminProdukFilterKategori === c.key ? 'active' : '') + '" onclick="setAdminProdukKategori(\'' + c.key + '\')">' + c.label + '</button>';
+    }).join('');
+}
+function setAdminProdukKategori(kategori) {
+    adminProdukFilterKategori = kategori;
+    adminProdukHalaman = 1;
+    renderAdminProdukKategoriChips();
+    filterAdminProduk();
 }
 
 /**
@@ -30,21 +56,53 @@ function loadAdminProduk() {
         simpanKeCache('adminProdukPage', data);
         umkmListCache = data.umkm_list || [];
         adminProdukCache = data.produk_list || [];
-        renderAdminProdukTable(adminProdukCache);
+        filterAdminProduk();
     });
 }
-function filterAdminProduk() {
-    const q = document.getElementById('adminProdukSearch').value.toLowerCase();
-    renderAdminProdukTable(adminProdukCache.filter(p => (p.nama_produk || '').toLowerCase().includes(q) || (p.nama_umkm || '').toLowerCase().includes(q)));
+/** Gabungan filter kategori + pencarian teks, lalu render halaman saat ini (reset ke halaman 1 kalau filter berubah). */
+function filterAdminProduk(resetHalaman) {
+    if (resetHalaman !== false) adminProdukHalaman = 1;
+    const q = (document.getElementById('adminProdukSearch').value || '').toLowerCase();
+    const filtered = adminProdukCache.filter(function(p) {
+        const cocokKategori = adminProdukFilterKategori === 'Semua' || p.kategori === adminProdukFilterKategori;
+        const cocokCari = !q || (p.nama_produk || '').toLowerCase().includes(q) || (p.nama_umkm || '').toLowerCase().includes(q);
+        return cocokKategori && cocokCari;
+    });
+    renderAdminProdukTable(filtered);
+}
+function gotoAdminProdukHalaman(h) {
+    adminProdukHalaman = h;
+    filterAdminProduk(false);
+    window.scrollTo(0, 0);
 }
 
 function renderAdminProdukTable(items) {
     const tbody = document.getElementById('adminProdukTbody');
     if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4" style="color:var(--text-muted)">Belum ada produk.</td></tr>';
+        document.getElementById('adminProdukPagination').innerHTML = '';
         return;
     }
-    tbody.innerHTML = items.map(p => ('\n    <tr>\n      <td>' + (p.foto_url ? ('<img src="' + (p.foto_url) + '" style="width:44px;height:44px;object-fit:cover;border-radius:6px;">') : '<div style="width:44px;height:44px;background:#f1f5f9;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#cbd5e1;"><i class="bi bi-image"></i></div>') + '</td>\n      <td class="font-semibold" style="color:var(--text-primary)">' + (escapeHtml(p.nama_produk)) + '</td>\n      <td>' + (escapeHtml(p.nama_umkm)) + '</td>\n      <td>' + (escapeHtml(p.kategori)) + ' <span style="color:var(--text-muted)">/ ' + (escapeHtml(p.sub_kategori)) + '</span></td>\n      <td>' + (formatRupiah(p.harga_promo || p.harga_normal)) + (p.harga_promo ? ('<br><span class="price-old">' + (formatRupiah(p.harga_normal)) + '</span>') : '') + '</td>\n      <td><span class="status-pill ' + (p.status === 'Aktif' ? 'aktif' : 'nonaktif') + '">' + (escapeHtml(p.status)) + '</span></td>\n      <td class="whitespace-nowrap">\n        <button class="btn-icon-sm" onclick=\'openProdukForm(' + (JSON.stringify(p)) + ')\' title="Edit"><i class="bi bi-pencil"></i></button>\n        <button class="btn-icon-sm" onclick=\'confirmDeleteRecord(' + JSON.stringify('produk') + ',' + JSON.stringify(p.id) + ', loadAdminProduk, [' + JSON.stringify(p.foto_path || '') + ',' + JSON.stringify(p.foto_path2 || '') + '])\' title="Hapus"><i class="bi bi-trash text-red-500"></i></button>\n      </td>\n    </tr>\n  ')).join('');
+    const totalHalaman = Math.max(Math.ceil(items.length / ADMIN_PRODUK_PER_HALAMAN), 1);
+    if (adminProdukHalaman > totalHalaman) adminProdukHalaman = totalHalaman;
+    const mulai = (adminProdukHalaman - 1) * ADMIN_PRODUK_PER_HALAMAN;
+    const halamanIni = items.slice(mulai, mulai + ADMIN_PRODUK_PER_HALAMAN);
+
+    tbody.innerHTML = halamanIni.map(p => ('\n    <tr>\n      <td>' + (p.foto_url ? ('<img src="' + (p.foto_url) + '" style="width:44px;height:44px;object-fit:cover;border-radius:6px;">') : '<div style="width:44px;height:44px;background:#f1f5f9;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#cbd5e1;"><i class="bi bi-image"></i></div>') + '</td>\n      <td class="font-semibold" style="color:var(--text-primary)">' + (escapeHtml(p.nama_produk)) + '</td>\n      <td>' + (escapeHtml(p.nama_umkm)) + '</td>\n      <td>' + (escapeHtml(p.kategori)) + ' <span style="color:var(--text-muted)">/ ' + (escapeHtml(p.sub_kategori)) + '</span></td>\n      <td>' + (formatRupiah(p.harga_promo || p.harga_normal)) + (p.harga_promo ? ('<br><span class="price-old">' + (formatRupiah(p.harga_normal)) + '</span>') : '') + '</td>\n      <td><span class="status-pill ' + (p.status === 'Aktif' ? 'aktif' : 'nonaktif') + '">' + (escapeHtml(p.status)) + '</span></td>\n      <td class="whitespace-nowrap">\n        <button class="btn-icon-sm" onclick=\'openProdukForm(' + (JSON.stringify(p)) + ')\' title="Edit"><i class="bi bi-pencil"></i></button>\n        <button class="btn-icon-sm" onclick=\'confirmDeleteRecord(' + JSON.stringify('produk') + ',' + JSON.stringify(p.id) + ', loadAdminProduk, [' + JSON.stringify(p.foto_path || '') + ',' + JSON.stringify(p.foto_path2 || '') + '])\' title="Hapus"><i class="bi bi-trash text-red-500"></i></button>\n      </td>\n    </tr>\n  ')).join('');
+
+    const pagEl = document.getElementById('adminProdukPagination');
+    if (!pagEl) return;
+    if (totalHalaman <= 1) { pagEl.innerHTML = ''; return; }
+    let html = '<button class="page-btn" ' + (adminProdukHalaman <= 1 ? 'disabled' : '') + ' onclick="gotoAdminProdukHalaman(' + (adminProdukHalaman - 1) + ')"><i class="bi bi-chevron-left"></i></button>';
+    for (let i = 1; i <= totalHalaman; i++) {
+        if (i === 1 || i === totalHalaman || Math.abs(i - adminProdukHalaman) <= 1) {
+            html += '<button class="page-btn ' + (i === adminProdukHalaman ? 'active' : '') + '" onclick="gotoAdminProdukHalaman(' + i + ')">' + i + '</button>';
+        } else if (Math.abs(i - adminProdukHalaman) === 2) {
+            html += '<span class="px-1">...</span>';
+        }
+    }
+    html += '<button class="page-btn" ' + (adminProdukHalaman >= totalHalaman ? 'disabled' : '') + ' onclick="gotoAdminProdukHalaman(' + (adminProdukHalaman + 1) + ')"><i class="bi bi-chevron-right"></i></button>';
+    pagEl.innerHTML = html;
 }
 
 /**
@@ -128,7 +186,7 @@ function openProdukForm(p) {
       '</div>',
       '<div class="form-group"><label class="form-label">Deskripsi</label><textarea class="form-textarea" id="pfDeskripsi">', escapeHtml(p.deskripsi || ''), '</textarea></div>',
       '<div class="grid grid-cols-2 gap-3">',
-      '<div class="form-group"><label class="form-label">Harga Normal (Rp) *</label><input class="form-input" type="number" id="pfHargaNormal" required value="', p.harga_normal || '', '"></div>',
+      '<div class="form-group"><label class="form-label" id="pfHargaNormalLabel">Harga Normal (Rp) *</label><input class="form-input" type="number" id="pfHargaNormal" ', (p.tipe_pemesanan === 'Custom' ? '' : 'required'), ' value="', p.harga_normal || '', '"></div>',
       '<div class="form-group"><label class="form-label">Harga Coret/Promo (Rp)</label><input class="form-input" type="number" id="pfHargaPromo" value="', p.harga_promo || '', '"></div>',
       '</div>',
       '<div class="grid grid-cols-2 gap-3">',
@@ -202,9 +260,19 @@ function openProdukForm(p) {
 let pfPaketRows = [];
 function toggleBagianPaket(tipe) {
     const section = document.getElementById('pfPaketSection');
-    if (!section) return;
-    section.classList.toggle('hidden', tipe !== 'Paket');
-    if (tipe === 'Paket' && !pfPaketRows.length) tambahBarisPaket();
+    if (section) {
+        section.classList.toggle('hidden', tipe !== 'Paket');
+        if (tipe === 'Paket' && !pfPaketRows.length) tambahBarisPaket();
+    }
+    // Harga Normal TIDAK wajib untuk tipe Custom - harga ditentukan customer
+    // sendiri lewat Budget saat checkout, bukan harga katalog tetap.
+    const hargaInput = document.getElementById('pfHargaNormal');
+    const hargaLabel = document.getElementById('pfHargaNormalLabel');
+    if (hargaInput && hargaLabel) {
+        const wajib = tipe !== 'Custom';
+        hargaInput.required = wajib;
+        hargaLabel.textContent = wajib ? 'Harga Normal (Rp) *' : 'Harga Normal (Rp) - opsional untuk tipe Custom';
+    }
 }
 function tambahBarisPaket() {
     pfPaketRows.push({ nama_paket: '', deskripsi_menu: '', harga: '' });

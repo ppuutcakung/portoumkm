@@ -121,20 +121,36 @@ let pendingDelete = null;
  * @param {string[]} [fileIdsToDelete] - ID file Google Drive yang ikut
  *   dihapus (kalau ada foto/logo terkait) - supaya tidak jadi file yatim
  *   yang menumpuk memenuhi penyimpanan Drive.
+ * @param {object} [options] - { pesanKonfirmasi: teks custom di modal,
+ *   beforeDelete: async function dijalankan SEBELUM baris utama dihapus -
+ *   dipakai untuk pembersihan berantai (mis. hapus semua Produk milik
+ *   1 UMKM sebelum UMKM-nya sendiri dihapus). }
  */
-function confirmDeleteRecord(table, id, onDoneCallback, fileIdsToDelete) {
-    pendingDelete = { table, id, onDoneCallback, fileIdsToDelete: fileIdsToDelete || [] };
+function confirmDeleteRecord(table, id, onDoneCallback, fileIdsToDelete, options) {
+    options = options || {};
+    pendingDelete = { table, id, onDoneCallback, fileIdsToDelete: fileIdsToDelete || [], beforeDelete: options.beforeDelete || null };
+    const bodyEl = document.querySelector('#deleteModal .modal-body p');
+    if (bodyEl) bodyEl.textContent = options.pesanKonfirmasi || 'Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.';
     openModal('deleteModal');
 }
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
         if (!pendingDelete)
             return;
-        const { table, id, onDoneCallback, fileIdsToDelete } = pendingDelete;
+        const { table, id, onDoneCallback, fileIdsToDelete, beforeDelete } = pendingDelete;
+        const btn = document.getElementById('confirmDeleteBtn');
+        const originalBtnText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-inline"></span> Menghapus...';
+        if (beforeDelete) {
+            try { await beforeDelete(); } catch (err) { console.error('beforeDelete gagal:', err); }
+        }
         for (const fid of fileIdsToDelete) {
             if (fid) await deleteFile(fid);
         }
         const res = await dbDelete(table, id);
+        btn.disabled = false;
+        btn.innerHTML = originalBtnText;
         closeModal('deleteModal');
         if (res.success) {
             AppState.cache = {}; // data berubah - bersihkan cache supaya tampilan customer tidak nyangkut data lama

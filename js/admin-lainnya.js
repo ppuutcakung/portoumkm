@@ -298,7 +298,7 @@ function renderAdminUmkmTable() {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4" style="color:var(--text-muted)">Belum ada data UMKM.</td></tr>';
         return;
     }
-    tbody.innerHTML = adminUmkmCache.map(u => ('\n    <tr>\n      <td class="font-semibold" style="color:var(--text-primary)">' + (escapeHtml(u.nama_umkm)) + '</td>\n      <td>' + (escapeHtml(u.kategori)) + '</td>\n      <td>' + (escapeHtml(u.kontak)) + '</td>\n      <td>' + (escapeHtml(u.keterangan)) + '</td>\n      <td class="whitespace-nowrap">\n        <button class="btn-icon-sm" onclick=\'openUmkmForm(' + (JSON.stringify(u)) + ')\'><i class="bi bi-pencil"></i></button>\n        <button class="btn-icon-sm" onclick="confirmDeleteRecord(\'umkm\',\'' + (u.id) + '\', loadAdminUmkm)"><i class="bi bi-trash text-red-500"></i></button>\n      </td>\n    </tr>\n  ')).join('');
+    tbody.innerHTML = adminUmkmCache.map(u => ('\n    <tr>\n      <td class="font-semibold" style="color:var(--text-primary)">' + (escapeHtml(u.nama_umkm)) + '</td>\n      <td>' + (escapeHtml(u.kategori)) + '</td>\n      <td>' + (escapeHtml(u.kontak)) + '</td>\n      <td>' + (escapeHtml(u.keterangan)) + '</td>\n      <td class="whitespace-nowrap">\n        <button class="btn-icon-sm" onclick=\'openUmkmForm(' + (JSON.stringify(u)) + ')\'><i class="bi bi-pencil"></i></button>\n        <button class="btn-icon-sm" onclick=\'hapusUmkmBerantai(' + JSON.stringify(u.id) + ',' + JSON.stringify(u.nama_umkm) + ')\'><i class="bi bi-trash text-red-500"></i></button>\n      </td>\n    </tr>\n  ')).join('');
 }
 
 function openUmkmForm(u) {
@@ -308,6 +308,31 @@ function openUmkmForm(u) {
     document.getElementById('previewModalTitle').textContent = u.id ? 'Edit UMKM' : 'Tambah UMKM';
     document.getElementById('previewModalContent').innerHTML = ('\n    <form onsubmit="submitUmkmForm(event)" class="text-left">\n      <input type="hidden" id="ufId" value="' + (u.id || '') + '">\n      <div class="form-group"><label class="form-label">Nama UMKM *</label><input class="form-input" id="ufNama" required value="' + (escapeHtml(u.nama_umkm || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Kategori *</label><select class="form-select" id="ufKategori" required>' + (opts) + '</select></div>\n      <div class="form-group"><label class="form-label">Kontak</label><input class="form-input" id="ufKontak" value="' + (escapeHtml(u.kontak || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Keterangan</label><textarea class="form-textarea" id="ufKeterangan">' + (escapeHtml(u.keterangan || '')) + '</textarea></div>\n      <button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-check-lg"></i> Simpan</button>\n    </form>\n  ');
     openModal('previewModal');
+}
+
+/**
+ * Hapus UMKM BESERTA semua Produk miliknya (otomatis, termasuk foto-foto
+ * Produk itu di Drive) - supaya tidak ada Produk "yatim" yang nama UMKM-nya
+ * sudah tidak ada. Produk dicari lewat kecocokan nama (nama_umkm), karena
+ * desain data sejak awal memang begitu (bukan relasi ID formal).
+ */
+function hapusUmkmBerantai(umkmId, namaUmkm) {
+    dbSelect('produk', { eq: { nama_umkm: namaUmkm } }).then(function(res) {
+        const produkTerkait = res.success ? res.data : [];
+        const pesan = produkTerkait.length
+            ? ('UMKM "' + namaUmkm + '" dipakai oleh ' + produkTerkait.length + ' produk. Menghapus UMKM ini akan IKUT MENGHAPUS SELURUH ' + produkTerkait.length + ' produk tersebut (termasuk fotonya). Lanjutkan?')
+            : ('Hapus UMKM "' + namaUmkm + '"? Tidak ada produk yang terkait saat ini.');
+        confirmDeleteRecord('umkm', umkmId, function() { loadAdminUmkm(); AppState.cache = {}; }, [], {
+            pesanKonfirmasi: pesan,
+            beforeDelete: async function() {
+                for (const p of produkTerkait) {
+                    if (p.foto_path) await deleteFile(p.foto_path);
+                    if (p.foto_path2) await deleteFile(p.foto_path2);
+                }
+                if (produkTerkait.length) await dbDeleteWhere('produk', 'nama_umkm', namaUmkm);
+            }
+        });
+    });
 }
 
 function submitUmkmForm(e) {
