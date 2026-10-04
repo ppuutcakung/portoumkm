@@ -50,7 +50,7 @@ function adminPageShell(activeLabel, contentHtml) {
 let dashboardChart = null;
 function renderAdminDashboardPage() {
     const container = document.getElementById('app-container');
-    container.innerHTML = adminPageShell('Ringkasan &amp; Statistik Pesanan', '\n    <div id="dashboardKpiWrap" class="grid gap-3 mb-4" style="grid-template-columns:repeat(2,1fr);"></div>\n    <div class="grid gap-4" style="grid-template-columns:1fr;" id="dashboardChartWrap">\n      <div class="card p-4">\n        <h3 class="font-bold mb-3" style="color:var(--text-primary)">Distribusi Produk per Kategori</h3>\n        <canvas id="chartKategori" height="220"></canvas>\n      </div>\n      <div class="card p-4">\n        <h3 class="font-bold mb-3" style="color:var(--text-primary)"><i class="bi bi-graph-up"></i> Rekap Akses Aplikasi per Bulan</h3>\n        <div class="table-wrap"><table class="data-table" style="background:#fff;"><thead><tr><th style="background:#fff; color:#000; border-bottom:2px solid var(--border-color);">Bulan</th><th style="background:#fff; color:#000; border-bottom:2px solid var(--border-color);">Jumlah Akses</th></tr></thead><tbody id="aksesBulananTbody" style="color:#000;"><tr><td colspan="2" class="text-center py-3">Memuat...</td></tr></tbody></table></div>\n      </div>\n    </div>\n  ');
+    container.innerHTML = adminPageShell('Ringkasan &amp; Statistik Pesanan', '\n    <div id="dashboardKpiWrap" class="grid gap-3 mb-4" style="grid-template-columns:repeat(2,1fr);"></div>\n    <div class="grid gap-4" style="grid-template-columns:1fr;" id="dashboardChartWrap">\n      <div class="card p-4">\n        <h3 class="font-bold mb-3" style="color:var(--text-primary)">Distribusi Produk per Kategori</h3>\n        <canvas id="chartKategori" height="220"></canvas>\n      </div>\n      <div class="card p-4">\n        <h3 class="font-bold mb-3" style="color:var(--text-primary)"><i class="bi bi-receipt"></i> Rekap Pesanan per UMKM</h3>\n        <div class="table-wrap" style="max-height:360px; overflow-y:auto;"><table class="data-table" style="background:#fff;"><thead><tr><th style="background:#fff; color:#000; border-bottom:2px solid var(--border-color);">UMKM</th><th style="background:#fff; color:#000; border-bottom:2px solid var(--border-color);">Jumlah Pesanan</th></tr></thead><tbody id="rekapPesananUmkmTbody" style="color:#000;"><tr><td colspan="2" class="text-center py-3">Memuat...</td></tr></tbody></table></div>\n      </div>\n    </div>\n  ');
     if (window.innerWidth >= 992) {
         document.getElementById('dashboardKpiWrap').style.gridTemplateColumns = 'repeat(4,1fr)';
         document.getElementById('dashboardChartWrap').style.gridTemplateColumns = '1.4fr 1fr';
@@ -61,10 +61,10 @@ function renderAdminDashboardPage() {
 function renderDashboardFromData(d) {
     document.getElementById('dashboardKpiWrap').innerHTML = ('\n        <div class="stat-card"><div class="stat-value">' + (d.dashboard.total_produk) + '</div><div class="stat-label">TOTAL PRODUK AKTIF</div></div>\n        <div class="stat-card"><div class="stat-value">' + (d.dashboard.total_pesanan) + '</div><div class="stat-label">TOTAL PESANAN TERCATAT</div></div>\n        <div class="stat-card"><div class="stat-value">' + (Object.keys(d.dashboard.kategori_counts).length) + '</div><div class="stat-label">KATEGORI AKTIF</div></div>\n        <div class="stat-card"><div class="stat-value">' + (d.dashboard.top_produk.length ? d.dashboard.top_produk[0][1] : 0) + '</div><div class="stat-label">PESANAN PRODUK TERLARIS</div></div>\n      ');
     renderKategoriChart(d.dashboard.kategori_counts);
-    renderAksesTable(d.akses_bulanan);
+    renderRekapPesananUmkm(d.rekap_pesanan_umkm || []);
 }
 /**
- * Satu permintaan gabungan (Dashboard KPI + Rekap Akses) lewat RPC
+ * Satu permintaan gabungan (Dashboard KPI + Rekap Pesanan per UMKM) lewat RPC
  * get_dashboard_page_data - menggantikan 2 permintaan terpisah. Cache
  * sisi-klien dipakai supaya bolak-balik ke halaman ini tidak perlu
  * tunggu server lagi selama beberapa menit.
@@ -81,19 +81,15 @@ function loadDashboardData() {
         renderDashboardFromData(res.data);
     });
 }
-function renderAksesTable(rows) {
-    const tbody = document.getElementById('aksesBulananTbody');
+function renderRekapPesananUmkm(rows) {
+    const tbody = document.getElementById('rekapPesananUmkmTbody');
     if (!tbody) return;
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="2" class="text-center py-3" style="color:var(--text-muted)">Belum ada data akses tercatat.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="2" class="text-center py-3" style="color:var(--text-muted)">Belum ada pesanan tercatat.</td></tr>';
         return;
     }
-    const bulanNama = { '01': 'Januari', '02': 'Februari', '03': 'Maret', '04': 'April', '05': 'Mei', '06': 'Juni', '07': 'Juli', '08': 'Agustus', '09': 'September', '10': 'Oktober', '11': 'November', '12': 'Desember' };
-    const rowsDesc = rows.slice().reverse();
-    tbody.innerHTML = rowsDesc.map(function(r) {
-        const parts = r.bulan_tahun.split('-');
-        const label = (bulanNama[parts[1]] || parts[1]) + ' ' + parts[0];
-        return '<tr><td>' + label + '</td><td>' + r.jumlah_akses + ' kali</td></tr>';
+    tbody.innerHTML = rows.map(function(r) {
+        return '<tr><td>' + escapeHtml(r.nama_umkm || '(Tanpa nama UMKM)') + '</td><td>' + r.jumlah_pesanan + ' kali</td></tr>';
     }).join('');
 }
 function renderKategoriChart(kategoriCounts) {
@@ -103,12 +99,12 @@ function renderKategoriChart(kategoriCounts) {
     if (dashboardChart)
         dashboardChart.destroy();
     dashboardChart = new Chart(ctx, {
-        type: 'doughnut',
+        type: 'bar',
         data: {
             labels: Object.keys(kategoriCounts).map(k => KATEGORI_LABEL[k] || k),
-            datasets: [{ data: Object.values(kategoriCounts), backgroundColor: ['#8c2f3a', '#a83c49', '#c97b85', '#e8aeb4'], borderWidth: 0 }]
+            datasets: [{ label: 'Jumlah Produk', data: Object.values(kategoriCounts), backgroundColor: '#8c2f3a', borderRadius: 4 }]
         },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
     });
 }
 

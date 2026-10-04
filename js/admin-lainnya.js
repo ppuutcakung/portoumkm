@@ -278,27 +278,142 @@ function submitMitraForm(e) {
 
 // -------------------- DATA UMKM --------------------
 let adminUmkmCache = [];
+let adminUmkmFilterKategori = 'Semua';
+
 function renderAdminUmkmPage() {
     const container = document.getElementById('app-container');
-    container.innerHTML = adminPageShell('Data UMKM Binaan', '\n    <div class="flex justify-end mb-3">\n      <button class="btn-primary" onclick="openUmkmForm()"><i class="bi bi-plus-lg"></i> Tambah UMKM</button>\n    </div>\n    <div class="table-wrap">\n      <table class="data-table">\n        <thead><tr><th>Nama UMKM</th><th>Kategori</th><th>Kontak</th><th>Keterangan</th><th></th></tr></thead>\n        <tbody id="adminUmkmTbody"><tr><td colspan="5" class="text-center py-4">Memuat...</td></tr></tbody>\n      </table>\n    </div>\n  ');
+    container.innerHTML = adminPageShell('Data UMKM Binaan', [
+      '<div class="flex items-center justify-between mb-3 flex-wrap gap-2">',
+      '<div class="search-box" style="width:300px;"><i class="bi bi-search"></i><input id="adminUmkmSearch" placeholder="Cari nama, kontak, keterangan..." oninput="filterAdminUmkm()"></div>',
+      '<button class="btn-primary" onclick="openUmkmForm()"><i class="bi bi-plus-lg"></i> Tambah UMKM</button>',
+      '</div>',
+      '<div class="flex flex-wrap gap-2 mb-2" id="adminUmkmKategoriChips"></div>',
+      '<div id="adminUmkmInfo" class="text-xs mb-3" style="color:var(--text-muted)"></div>',
+      '<div class="table-wrap">',
+      '<table class="data-table">',
+      '<thead><tr><th>Nama UMKM</th><th>Kategori</th><th>Kontak</th><th>Keterangan</th><th></th></tr></thead>',
+      '<tbody id="adminUmkmTbody"><tr><td colspan="5" class="text-center py-4">Memuat...</td></tr></tbody>',
+      '</table>',
+      '</div>'
+    ].join(''));
+    adminUmkmFilterKategori = 'Semua';
     loadAdminUmkm();
 }
 function loadAdminUmkm() {
     const cached = ambilDariCache('adminUmkmList');
-    if (cached) { adminUmkmCache = cached; renderAdminUmkmTable(); return; }
-    dbSelect('umkm').then(function(res) {
+    if (cached) { adminUmkmCache = cached; filterAdminUmkm(); return; }
+    dbSelect('umkm', { order: 'created_at', ascending: false }).then(function(res) {
         adminUmkmCache = res.success ? res.data : [];
         simpanKeCache('adminUmkmList', adminUmkmCache);
-        renderAdminUmkmTable();
+        filterAdminUmkm();
     });
 }
-function renderAdminUmkmTable() {
+/** Chip filter kategori + jumlah UMKM per kategori (membantu Admin mengecek UMKM yang sudah masuk). */
+function renderAdminUmkmKategoriChips() {
+    const wrap = document.getElementById('adminUmkmKategoriChips');
+    if (!wrap) return;
+    const daftar = ['Semua', 'PortoRasa', 'PortoKriya', 'PortoTani'];
+    wrap.innerHTML = daftar.map(function(k) {
+        const jumlah = k === 'Semua' ? adminUmkmCache.length : adminUmkmCache.filter(function(u) { return u.kategori === k; }).length;
+        return '<button class="chip chip-solid ' + (adminUmkmFilterKategori === k ? 'active' : '') + '" onclick="setAdminUmkmKategori(\'' + k + '\')">' + k + ' (' + jumlah + ')</button>';
+    }).join('');
+}
+function setAdminUmkmKategori(k) {
+    adminUmkmFilterKategori = k;
+    filterAdminUmkm();
+}
+/** Gabungan filter kategori + pencarian teks (nama, kontak, keterangan). */
+function filterAdminUmkm() {
+    renderAdminUmkmKategoriChips();
+    const q = (((document.getElementById('adminUmkmSearch') || {}).value) || '').trim().toLowerCase();
+    const hasil = adminUmkmCache.filter(function(u) {
+        const cocokKategori = adminUmkmFilterKategori === 'Semua' || u.kategori === adminUmkmFilterKategori;
+        const cocokCari = !q || [u.nama_umkm, u.kontak, u.keterangan].some(function(v) { return String(v || '').toLowerCase().includes(q); });
+        return cocokKategori && cocokCari;
+    });
+    renderAdminUmkmTable(hasil);
+}
+function renderAdminUmkmTable(items) {
     const tbody = document.getElementById('adminUmkmTbody');
+    if (!tbody) return;
+    const info = document.getElementById('adminUmkmInfo');
+    if (info) info.textContent = 'Menampilkan ' + items.length + ' dari ' + adminUmkmCache.length + ' UMKM';
     if (!adminUmkmCache.length) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4" style="color:var(--text-muted)">Belum ada data UMKM.</td></tr>';
         return;
     }
-    tbody.innerHTML = adminUmkmCache.map(u => ('\n    <tr>\n      <td class="font-semibold" style="color:var(--text-primary)">' + (escapeHtml(u.nama_umkm)) + '</td>\n      <td>' + (escapeHtml(u.kategori)) + '</td>\n      <td>' + (escapeHtml(u.kontak)) + '</td>\n      <td>' + (escapeHtml(u.keterangan)) + '</td>\n      <td class="whitespace-nowrap">\n        <button class="btn-icon-sm" onclick=\'openUmkmForm(' + (JSON.stringify(u)) + ')\'><i class="bi bi-pencil"></i></button>\n        <button class="btn-icon-sm" onclick=\'hapusUmkmBerantai(' + JSON.stringify(u.id) + ',' + JSON.stringify(u.nama_umkm) + ')\'><i class="bi bi-trash text-red-500"></i></button>\n      </td>\n    </tr>\n  ')).join('');
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4" style="color:var(--text-muted)">Tidak ada UMKM yang cocok dengan filter/pencarian.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = items.map(u => ('\n    <tr>\n      <td class="font-semibold" style="color:var(--text-primary)">' + (escapeHtml(u.nama_umkm)) + '</td>\n      <td>' + (escapeHtml(u.kategori)) + '</td>\n      <td>' + (escapeHtml(u.kontak)) + '</td>\n      <td>' + (escapeHtml(u.keterangan)) + '</td>\n      <td class="whitespace-nowrap">\n        <button class="btn-icon-sm" onclick=\'openUmkmForm(' + (JSON.stringify(u)) + ')\'><i class="bi bi-pencil"></i></button>\n        <button class="btn-icon-sm" onclick=\'hapusUmkmBerantai(' + JSON.stringify(u.id) + ',' + JSON.stringify(u.nama_umkm) + ')\'><i class="bi bi-trash text-red-500"></i></button>\n      </td>\n    </tr>\n  ')).join('');
+}
+
+// -------------------- DETEKSI NAMA UMKM GANDA / MIRIP --------------------
+/**
+ * Normalisasi nama supaya perbandingan tidak terkecoh huruf besar/kecil,
+ * spasi berlebih, tanda baca, atau aksen.
+ */
+function normalisasiNamaUmkm(nama) {
+    return String(nama || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+/** Awalan badan usaha yang sering ditulis/tidak ditulis ("CV Maju" vs "Maju") - hanya ini yang dibuang, supaya "Toko X" dan "Warung X" tetap dianggap berbeda. */
+const AWALAN_BADAN_USAHA = ['umkm', 'cv', 'pt', 'ud'];
+function kunciNamaUmkm(nama) {
+    let token = normalisasiNamaUmkm(nama).split(' ').filter(Boolean);
+    while (token.length > 1 && AWALAN_BADAN_USAHA.indexOf(token[0]) !== -1) token.shift();
+    return token.join('');
+}
+function jarakLevenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (!m) return n;
+    if (!n) return m;
+    let prev = [];
+    for (let j = 0; j <= n; j++) prev[j] = j;
+    for (let i = 1; i <= m; i++) {
+        const cur = [i];
+        for (let j = 1; j <= n; j++) {
+            cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        }
+        prev = cur;
+    }
+    return prev[n];
+}
+/**
+ * Cari UMKM di daftar yang namanya SAMA atau MIRIP dengan nama baru.
+ * - 'persis': sama setelah huruf besar/kecil, spasi, dan tanda baca diabaikan
+ *   ("Sari Rasa" = "sari  rasa" = "SariRasa")
+ * - 'mirip' : sama setelah awalan badan usaha dibuang ("CV Sari Rasa" ~ "Sari Rasa"),
+ *   ATAU selisih huruf sangat kecil (salah ketik, mis. "Sari Rasa" ~ "Sari Rasaa").
+ *   Nama yang angkanya berbeda ("Kelompok Mawar 1" vs "Kelompok Mawar 2") dianggap BERBEDA.
+ * @returns {{jenis:string, umkm:object}|null}
+ */
+function cariUmkmSerupa(namaBaru, daftar, abaikanId) {
+    const polosBaru = normalisasiNamaUmkm(namaBaru).replace(/ /g, '');
+    const kunciBaru = kunciNamaUmkm(namaBaru);
+    if (!polosBaru) return null;
+    let kandidatMirip = null;
+    for (const u of daftar) {
+        if (abaikanId && u.id === abaikanId) continue;
+        const polosLama = normalisasiNamaUmkm(u.nama_umkm).replace(/ /g, '');
+        if (polosLama === polosBaru) return { jenis: 'persis', umkm: u };
+        const kunciLama = kunciNamaUmkm(u.nama_umkm);
+        if (kunciLama && kunciLama === kunciBaru) { kandidatMirip = kandidatMirip || { jenis: 'mirip', umkm: u }; continue; }
+        const angkaBaru = kunciBaru.replace(/[^0-9]/g, '');
+        const angkaLama = kunciLama.replace(/[^0-9]/g, '');
+        if (angkaBaru !== angkaLama) continue;
+        const panjang = Math.max(kunciBaru.length, kunciLama.length);
+        const batas = panjang <= 4 ? 0 : (panjang <= 11 ? 1 : 2);
+        if (batas > 0 && jarakLevenshtein(kunciBaru, kunciLama) <= batas) {
+            kandidatMirip = kandidatMirip || { jenis: 'mirip', umkm: u };
+        }
+    }
+    return kandidatMirip;
 }
 
 function openUmkmForm(u) {
@@ -306,7 +421,7 @@ function openUmkmForm(u) {
     const struk = AppState.kategoriStruktur || {};
     const opts = Object.keys(struk).map(k => ('<option value="' + (k) + '" ' + (u.kategori === k ? 'selected' : '') + '>' + (struk[k].label || k) + '</option>')).join('');
     document.getElementById('previewModalTitle').textContent = u.id ? 'Edit UMKM' : 'Tambah UMKM';
-    document.getElementById('previewModalContent').innerHTML = ('\n    <form onsubmit="submitUmkmForm(event)" class="text-left">\n      <input type="hidden" id="ufId" value="' + (u.id || '') + '">\n      <div class="form-group"><label class="form-label">Nama UMKM *</label><input class="form-input" id="ufNama" required value="' + (escapeHtml(u.nama_umkm || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Kategori *</label><select class="form-select" id="ufKategori" required>' + (opts) + '</select></div>\n      <div class="form-group"><label class="form-label">Kontak</label><input class="form-input" id="ufKontak" value="' + (escapeHtml(u.kontak || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Keterangan</label><textarea class="form-textarea" id="ufKeterangan">' + (escapeHtml(u.keterangan || '')) + '</textarea></div>\n      <button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-check-lg"></i> Simpan</button>\n    </form>\n  ');
+    document.getElementById('previewModalContent').innerHTML = ('\n    <form onsubmit="submitUmkmForm(event)" class="text-left">\n      <input type="hidden" id="ufId" value="' + (u.id || '') + '">\n      <div class="form-group"><label class="form-label">Nama UMKM *</label><input class="form-input" id="ufNama" required value="' + (escapeHtml(u.nama_umkm || '')) + '"><div id="ufNamaError" class="text-xs mt-1" style="color:#dc2626;"></div></div>\n      <div class="form-group"><label class="form-label">Kategori *</label><select class="form-select" id="ufKategori" required>' + (opts) + '</select></div>\n      <div class="form-group"><label class="form-label">Kontak</label><input class="form-input" id="ufKontak" value="' + (escapeHtml(u.kontak || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Keterangan</label><textarea class="form-textarea" id="ufKeterangan">' + (escapeHtml(u.keterangan || '')) + '</textarea></div>\n      <button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-check-lg"></i> Simpan</button>\n    </form>\n  ');
     openModal('previewModal');
 }
 
@@ -344,19 +459,48 @@ function submitUmkmForm(e) {
         keterangan: document.getElementById('ufKeterangan').value.trim()
     };
     const umkmId = document.getElementById('ufId').value || null;
+    const errEl = document.getElementById('ufNamaError');
+    if (errEl) errEl.textContent = '';
     const btn = e.target.querySelector('button[type="submit"]');
-    btn.innerHTML = '<span class="spinner-inline"></span> Menyimpan...';
+    const original = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-inline"></span> Memeriksa & menyimpan...';
     btn.disabled = true;
-    const promise = umkmId ? dbUpdate('umkm', umkmId, record) : dbInsert('umkm', record);
-    promise.then(function(res) {
-        if (!res.success) {
-            showToast('Gagal', res.message, 'danger');
-            btn.disabled = false;
-            return;
+
+    // Kalau sedang EDIT dan namanya tidak diubah, tidak perlu cek ulang nama
+    // (supaya UMKM lama yang kebetulan sudah punya "kembaran" tetap bisa diedit kontak/keterangannya).
+    const dataLama = umkmId ? adminUmkmCache.find(function(x) { return x.id === umkmId; }) : null;
+    const namaTidakBerubah = dataLama && normalisasiNamaUmkm(dataLama.nama_umkm) === normalisasiNamaUmkm(record.nama_umkm);
+
+    // Ambil daftar TERBARU langsung dari database (bukan cache) sebelum cek,
+    // supaya UMKM yang baru ditambahkan Admin lain/di tab lain ikut terhitung.
+    const ambilDaftar = namaTidakBerubah ? Promise.resolve(null) : dbSelect('umkm');
+    ambilDaftar.then(function(listRes) {
+        if (listRes) {
+            const daftar = listRes.success ? listRes.data : adminUmkmCache;
+            const serupa = cariUmkmSerupa(record.nama_umkm, daftar, umkmId);
+            if (serupa) {
+                btn.innerHTML = original;
+                btn.disabled = false;
+                const pesan = serupa.jenis === 'persis'
+                    ? ('DITOLAK: UMKM "' + serupa.umkm.nama_umkm + '" sudah terdaftar dengan nama yang sama.')
+                    : ('DITOLAK: nama ini terlalu mirip dengan UMKM yang sudah ada: "' + serupa.umkm.nama_umkm + '".');
+                if (errEl) errEl.textContent = pesan + ' Gunakan UMKM yang sudah ada, atau beri nama yang benar-benar berbeda.';
+                showToast('Ditolak', pesan, 'danger');
+                return;
+            }
         }
-        AppState.cache = {};
-        showToast('Berhasil', res.message, 'success');
-        closeModal('previewModal');
-        loadAdminUmkm();
+        const promise = umkmId ? dbUpdate('umkm', umkmId, record) : dbInsert('umkm', record);
+        promise.then(function(res) {
+            if (!res.success) {
+                showToast('Gagal', res.message, 'danger');
+                btn.innerHTML = original;
+                btn.disabled = false;
+                return;
+            }
+            AppState.cache = {};
+            showToast('Berhasil', res.message, 'success');
+            closeModal('previewModal');
+            loadAdminUmkm();
+        });
     });
 }
