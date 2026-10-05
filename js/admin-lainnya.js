@@ -139,8 +139,8 @@ function renderFlyerGrid(items) {
                 '<div class="flex items-center justify-between mt-3">',
                 '<span class="status-pill ' + (statusVal === 'Aktif' ? 'aktif' : 'nonaktif') + '">' + (statusVal === 'Aktif' ? 'Live' : 'Nonaktif') + '</span>',
                 '<div>',
-                '<button class="btn-icon-sm" onclick=\'openFlyerForm(' + JSON.stringify(f || {}) + ')\'><i class="bi bi-pencil"></i></button>',
-                "<button class='btn-icon-sm' onclick='confirmDeleteRecord(" + JSON.stringify('flyer_promo') + ',' + JSON.stringify(idSafe) + ', loadAdminFlyer, [' + JSON.stringify(pathSafe) + "])'><i class='bi bi-trash text-red-500'></i></button>",
+                '<button class="btn-icon-sm" onclick="editFlyerById(\'' + idAman(idSafe) + '\')" title="Edit"><i class="bi bi-pencil"></i></button>',
+                '<button class="btn-icon-sm" onclick="hapusFlyerById(\'' + idAman(idSafe) + '\')" title="Hapus"><i class="bi bi-trash text-red-500"></i></button>',
                 '</div>',
                 '</div>',
                 '</div>',
@@ -153,10 +153,20 @@ function renderFlyerGrid(items) {
     el.innerHTML = cardsHtml.length ? cardsHtml.join('') : '<div class="empty-state col-span-full"><i class="bi bi-exclamation-triangle"></i>Data flyer ada tapi gagal ditampilkan. Cek Console (F12).</div>';
 }
 
+function editFlyerById(id) {
+    const f = adminFlyerCache.find(function(x) { return x.id === id; });
+    if (!f) { showToast('Gagal', 'Data flyer tidak ditemukan. Muat ulang halaman lalu coba lagi.', 'danger'); return; }
+    openFlyerForm(f);
+}
+function hapusFlyerById(id) {
+    const f = adminFlyerCache.find(function(x) { return x.id === id; });
+    if (!f) { showToast('Gagal', 'Data flyer tidak ditemukan. Muat ulang halaman lalu coba lagi.', 'danger'); return; }
+    confirmDeleteRecord('flyer_promo', id, loadAdminFlyer, [f.gambar_path || '']);
+}
 function openFlyerForm(f) {
     f = f || {};
     document.getElementById('previewModalTitle').textContent = f.id ? 'Edit Flyer' : 'Unggah Flyer Baru';
-    document.getElementById('previewModalContent').innerHTML = ('\n    <form id="flyerForm" class="text-left" onsubmit="submitFlyerForm(event)">\n      <input type="hidden" id="ffId" value="' + (f.id || '') + '">\n      <div class="form-group"><label class="form-label">Judul *</label><input class="form-input" id="ffJudul" required value="' + (escapeHtml(f.judul || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Jenis</label>\n        <select class="form-select" id="ffJenis">\n          <option ' + (f.jenis === 'Event Besar' ? 'selected' : '') + '>Event Besar</option>\n          <option ' + (f.jenis === 'Promo' ? 'selected' : '') + '>Promo</option>\n          <option ' + (f.jenis === 'Umum' ? 'selected' : '') + '>Umum</option>\n        </select>\n      </div>\n      <div class="form-group"><label class="form-label">Status</label>\n        <select class="form-select" id="ffStatus"><option ' + (f.status === 'Aktif' ? 'selected' : '') + '>Aktif</option><option ' + (f.status === 'Nonaktif' ? 'selected' : '') + '>Nonaktif</option></select>\n      </div>\n      <div class="form-group">\n        <label class="form-label">Gambar Flyer</label>\n        <input class="form-input" type="file" id="ffGambar" accept="image/*">\n        <p class="text-xs mt-1" style="color:var(--text-muted)">Ukuran disarankan: 1600 x 320 px (rasio 5:1, persegi panjang lebar).</p>\n        <input type="hidden" id="ffGambarURL" value="' + (f.gambar_url || '') + '">\n        <input type="hidden" id="ffGambarPath" value="' + (f.gambar_path || '') + '">\n      </div>\n      <button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-check-lg"></i> Simpan Flyer</button>\n    </form>\n  ');
+    document.getElementById('previewModalContent').innerHTML = ('\n    <form id="flyerForm" class="text-left" onsubmit="submitFlyerForm(event)">\n      <input type="hidden" id="ffId" value="' + (f.id || '') + '">\n      <div class="form-group"><label class="form-label">Judul *</label><input class="form-input" id="ffJudul" required value="' + (escapeAttr(f.judul || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Jenis</label>\n        <select class="form-select" id="ffJenis">\n          <option ' + (f.jenis === 'Event Besar' ? 'selected' : '') + '>Event Besar</option>\n          <option ' + (f.jenis === 'Promo' ? 'selected' : '') + '>Promo</option>\n          <option ' + (f.jenis === 'Umum' ? 'selected' : '') + '>Umum</option>\n        </select>\n      </div>\n      <div class="form-group"><label class="form-label">Status</label>\n        <select class="form-select" id="ffStatus"><option ' + (f.status === 'Aktif' ? 'selected' : '') + '>Aktif</option><option ' + (f.status === 'Nonaktif' ? 'selected' : '') + '>Nonaktif</option></select>\n      </div>\n      <div class="form-group">\n        <label class="form-label">Gambar Flyer</label>\n        <input class="form-input" type="file" id="ffGambar" accept="image/*">\n        <p class="text-xs mt-1" style="color:var(--text-muted)">Ukuran disarankan: 1600 x 320 px (rasio 5:1, persegi panjang lebar).</p>\n        <input type="hidden" id="ffGambarURL" value="' + (f.gambar_url || '') + '">\n        <input type="hidden" id="ffGambarPath" value="' + (f.gambar_path || '') + '">\n      </div>\n      <button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-check-lg"></i> Simpan Flyer</button>\n    </form>\n  ');
     openModal('previewModal');
 }
 function submitFlyerForm(e) {
@@ -346,7 +356,23 @@ function renderAdminUmkmTable(items) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4" style="color:var(--text-muted)">Tidak ada UMKM yang cocok dengan filter/pencarian.</td></tr>';
         return;
     }
-    tbody.innerHTML = items.map(u => ('\n    <tr>\n      <td class="font-semibold" style="color:var(--text-primary)">' + (escapeHtml(u.nama_umkm)) + '</td>\n      <td>' + (escapeHtml(u.kategori)) + '</td>\n      <td>' + (escapeHtml(u.kontak)) + '</td>\n      <td>' + (escapeHtml(u.keterangan)) + '</td>\n      <td class="whitespace-nowrap">\n        <button class="btn-icon-sm" onclick=\'openUmkmForm(' + (JSON.stringify(u)) + ')\'><i class="bi bi-pencil"></i></button>\n        <button class="btn-icon-sm" onclick=\'hapusUmkmBerantai(' + JSON.stringify(u.id) + ',' + JSON.stringify(u.nama_umkm) + ')\'><i class="bi bi-trash text-red-500"></i></button>\n      </td>\n    </tr>\n  ')).join('');
+    // Tombol Edit/Hapus HANYA membawa ID UMKM (sebelumnya seluruh data UMKM diselipkan ke atribut HTML,
+    // sehingga UMKM yang teksnya memuat tanda kutip (') tombol Edit-nya mati).
+    tbody.innerHTML = items.map(function(u) {
+        const id = idAman(u.id);
+        return [
+          '<tr>',
+          '<td class="font-semibold" style="color:var(--text-primary)">' + escapeHtml(u.nama_umkm) + '</td>',
+          '<td>' + escapeHtml(u.kategori) + '</td>',
+          '<td>' + escapeHtml(u.kontak) + '</td>',
+          '<td>' + escapeHtml(u.keterangan) + '</td>',
+          '<td class="whitespace-nowrap">',
+          '<button class="btn-icon-sm" onclick="editUmkmById(\'' + id + '\')" title="Edit"><i class="bi bi-pencil"></i></button> ',
+          '<button class="btn-icon-sm" onclick="hapusUmkmBerantai(\'' + id + '\')" title="Hapus"><i class="bi bi-trash text-red-500"></i></button>',
+          '</td>',
+          '</tr>'
+        ].join('');
+    }).join('');
 }
 
 // -------------------- DETEKSI NAMA UMKM GANDA / MIRIP --------------------
@@ -421,7 +447,7 @@ function openUmkmForm(u) {
     const struk = AppState.kategoriStruktur || {};
     const opts = Object.keys(struk).map(k => ('<option value="' + (k) + '" ' + (u.kategori === k ? 'selected' : '') + '>' + (struk[k].label || k) + '</option>')).join('');
     document.getElementById('previewModalTitle').textContent = u.id ? 'Edit UMKM' : 'Tambah UMKM';
-    document.getElementById('previewModalContent').innerHTML = ('\n    <form onsubmit="submitUmkmForm(event)" class="text-left">\n      <input type="hidden" id="ufId" value="' + (u.id || '') + '">\n      <div class="form-group"><label class="form-label">Nama UMKM *</label><input class="form-input" id="ufNama" required value="' + (escapeHtml(u.nama_umkm || '')) + '"><div id="ufNamaError" class="text-xs mt-1" style="color:#dc2626;"></div></div>\n      <div class="form-group"><label class="form-label">Kategori *</label><select class="form-select" id="ufKategori" required>' + (opts) + '</select></div>\n      <div class="form-group"><label class="form-label">Kontak</label><input class="form-input" id="ufKontak" value="' + (escapeHtml(u.kontak || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Keterangan</label><textarea class="form-textarea" id="ufKeterangan">' + (escapeHtml(u.keterangan || '')) + '</textarea></div>\n      <button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-check-lg"></i> Simpan</button>\n    </form>\n  ');
+    document.getElementById('previewModalContent').innerHTML = ('\n    <form onsubmit="submitUmkmForm(event)" class="text-left">\n      <input type="hidden" id="ufId" value="' + (u.id || '') + '">\n      <div class="form-group"><label class="form-label">Nama UMKM *</label><input class="form-input" id="ufNama" required value="' + (escapeAttr(u.nama_umkm || '')) + '"><div id="ufNamaError" class="text-xs mt-1" style="color:#dc2626;"></div></div>\n      <div class="form-group"><label class="form-label">Kategori *</label><select class="form-select" id="ufKategori" required>' + (opts) + '</select></div>\n      <div class="form-group"><label class="form-label">Kontak</label><input class="form-input" id="ufKontak" value="' + (escapeAttr(u.kontak || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Keterangan</label><textarea class="form-textarea" id="ufKeterangan">' + (escapeHtml(u.keterangan || '')) + '</textarea></div>\n      <button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-check-lg"></i> Simpan</button>\n    </form>\n  ');
     openModal('previewModal');
 }
 
@@ -431,18 +457,30 @@ function openUmkmForm(u) {
  * sudah tidak ada. Produk dicari lewat kecocokan nama (nama_umkm), karena
  * desain data sejak awal memang begitu (bukan relasi ID formal).
  */
-function hapusUmkmBerantai(umkmId, namaUmkm) {
+function editUmkmById(id) {
+    const u = adminUmkmCache.find(function(x) { return x.id === id; });
+    if (!u) { showToast('Gagal', 'Data UMKM tidak ditemukan. Muat ulang halaman lalu coba lagi.', 'danger'); return; }
+    openUmkmForm(u);
+}
+function hapusUmkmBerantai(umkmId) {
+    const u = adminUmkmCache.find(function(x) { return x.id === umkmId; });
+    if (!u) { showToast('Gagal', 'Data UMKM tidak ditemukan. Muat ulang halaman lalu coba lagi.', 'danger'); return; }
+    const namaUmkm = u.nama_umkm;
     dbSelect('produk', { eq: { nama_umkm: namaUmkm } }).then(function(res) {
-        const produkTerkait = res.success ? res.data : [];
+        if (!res.success) {
+            // Jangan lanjut kalau produk terkait tidak bisa diperiksa: bisa-bisa ada produk yang tertinggal tanpa pemilik.
+            showToast('Gagal', 'Tidak bisa memeriksa produk milik UMKM ini: ' + res.message, 'danger');
+            return;
+        }
+        const produkTerkait = res.data;
         const pesan = produkTerkait.length
-            ? ('UMKM "' + namaUmkm + '" dipakai oleh ' + produkTerkait.length + ' produk. Menghapus UMKM ini akan IKUT MENGHAPUS SELURUH ' + produkTerkait.length + ' produk tersebut (termasuk fotonya). Lanjutkan?')
+            ? ('UMKM "' + namaUmkm + '" dipakai oleh ' + produkTerkait.length + ' produk. Menghapus UMKM ini akan IKUT MENGHAPUS SELURUH ' + produkTerkait.length + ' produk tersebut (termasuk semua fotonya). Lanjutkan?')
             : ('Hapus UMKM "' + namaUmkm + '"? Tidak ada produk yang terkait saat ini.');
         confirmDeleteRecord('umkm', umkmId, function() { loadAdminUmkm(); AppState.cache = {}; }, [], {
             pesanKonfirmasi: pesan,
             beforeDelete: async function() {
                 for (const p of produkTerkait) {
-                    if (p.foto_path) await deleteFile(p.foto_path);
-                    if (p.foto_path2) await deleteFile(p.foto_path2);
+                    for (const fid of fileIdsProduk(p)) await deleteFile(fid);
                 }
                 if (produkTerkait.length) await dbDeleteWhere('produk', 'nama_umkm', namaUmkm);
             }

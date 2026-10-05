@@ -1,0 +1,4 @@
+JANGAN salin file ini ke proyek Anda - keduanya TIDAK berubah pada update ini:
+  js/config.js      (berisi kunci Supabase Anda)
+  js/admin-core.js
+Juga jangan hapus css/style.css dan assets/logo.png milik Anda; file b2b-fitur.css hanya MENAMBAH gaya baru.

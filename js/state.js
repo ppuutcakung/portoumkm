@@ -15,7 +15,9 @@ const AppState = {
         PortoKriya: { label: 'PortoKriya (Kerajinan)', sub: ['Tas Anyaman', 'Aksesoris', 'Merchandise', 'Souvenir', 'Lainnya'] },
         PortoTani: { label: 'PortoTani (Pertanian)', sub: ['Sayuran', 'Buah', 'Madu', 'Bibit', 'Hasil Olahan'] }
     },
-    cart: [], // { id, nama, hargaSatuan, satuan, qty, umkm }
+    mode: 'b2c', // 'b2c' (Ritel) atau 'b2b' (Grosir) - dipulihkan dari localStorage saat aplikasi dibuka
+    produkIndex: {}, // id -> data produk yang sedang/pernah tampil (dipakai tombol kartu, supaya data tidak diselipkan ke atribut HTML)
+    cart: [], // { id, nama, hargaSatuan, satuan, qty, umkm, catatan, warna }
     katalogFilter: { kategori: 'Semua', subKategori: '', search: '', page: 1, perPage: 40 },
     katalogSort: 'terbaru',
     cache: {} // { heroCarousel: {data, ts}, promoBanner: {...}, homeProdukKategori: {...}, mitraList: {...} }
@@ -33,5 +35,5 @@ function simpanKeCache(key, data) {
 
 const KATEGORI_LABEL = { PortoRasa: 'PortoRasa (Kuliner)', PortoKriya: 'PortoKriya (Kerajinan)', PortoTani: 'PortoTani (Pertanian)' };
 
-const PUBLIC_PAGES = ['home', 'katalog', 'mitra', 'produkDetail', 'keranjang', 'adminLogin'];
-const ADMIN_PAGES = ['adminDashboard', 'adminProduk', 'adminHero', 'adminFlyer', 'adminMitra', 'adminUmkm', 'adminPembayaran', 'adminSettings'];
+const PUBLIC_PAGES = ['home', 'katalog', 'mitra', 'keranjang', 'adminLogin'];
+const ADMIN_PAGES = ['adminDashboard', 'adminProduk', 'adminHero', 'adminFlyer', 'adminMitra', 'adminUmkm', 'adminPembayaran', 'adminRfq', 'adminSettings'];

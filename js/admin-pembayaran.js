@@ -59,7 +59,7 @@ function renderPembayaranTable(items) {
     items.forEach(function(p) {
         try {
             const pesananItems = p.pesanan_items || [];
-            const produkStr = pesananItems.map(function(it) { return it.nama_produk + ' x' + it.qty + (it.satuan || ''); }).join('; ') || '-';
+            const produkStr = pesananItems.map(function(it) { return it.nama_produk + (it.warna ? ' [' + it.warna + ']' : '') + ' x' + it.qty + (it.satuan || ''); }).join('; ') || '-';
             const umkmSet = [...new Set(pesananItems.map(function(it) { return it.nama_umkm; }).filter(Boolean))];
             const umkmStr = umkmSet.join(', ') || '-';
             const tanggal = p.created_at ? new Date(p.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';

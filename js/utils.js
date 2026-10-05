@@ -50,3 +50,20 @@ function waLinkHref(produkNama, namaUMKM, harga) {
     }
     return 'https://wa.me/' + waNumber + '?text=' + encodeURIComponent(text);
 }
+
+/**
+ * Escape untuk nilai ATRIBUT HTML (value="...", title="..."): berbeda dari
+ * escapeHtml() yang hanya aman untuk isi teks. Tanda kutip ' dan " ikut
+ * di-escape supaya teks bebas (nama produk, deskripsi) tidak bisa merusak atribut.
+ */
+function escapeAttr(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+/** Rapikan nomor WhatsApp/HP ke format internasional tanpa tanda baca (0812... -> 62812...). */
+function normalisasiNoWa(no) {
+    let d = String(no || '').replace(/[^0-9]/g, '');
+    if (d.startsWith('0')) d = '62' + d.slice(1);
+    return d;
+}

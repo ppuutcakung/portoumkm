@@ -45,74 +45,20 @@ function renderHomePage() {
       '</div>',
       '</section>',
 
-      '<section class="page-wrap">',
-      '<div class="flex items-end justify-between mb-4 flex-wrap gap-2">',
-      '<div>',
-      '<div class="text-xs font-bold uppercase tracking-wide" style="color:var(--primary)">Sektor Prioritas</div>',
-      '<h2 class="text-xl md:text-2xl font-extrabold" style="color:var(--text-primary)">3 Klaster <span style="color:var(--primary)">Produk UMKM</span></h2>',
-      '</div>',
-      '</div>',
-      '<div class="grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));" id="sectorCardsWrap"></div>',
-      '</section>',
-
-      '<section class="page-wrap">',
-      '<div class="flex items-end justify-between mb-3 flex-wrap gap-2">',
-      '<div>',
-      '<h2 class="text-2xl md:text-3xl font-extrabold" style="color:var(--text-primary)">Katalog <span style="color:var(--primary)">Produk UMKM</span></h2>',
-      '</div>',
-      '</div>',
+      '<section class="page-wrap" id="homeProdukSection">',
+      '<div id="b2bBannerWrap"></div>',
       '<div id="homeProductGridRasa" class="product-grid mb-4"></div>',
-      '<div id="homeProductGridKriya" class="product-grid mb-4"></div>',
       '<div id="homeProductGridTani" class="product-grid mb-4"></div>',
+      '<div id="homeProductGridKriya" class="product-grid mb-4"></div>',
       '<div class="text-center mt-2"><button class="btn-ghost" onclick="navigateTo(\'katalog\')">Lihat Semua Produk <i class="bi bi-arrow-right"></i></button></div>',
       '</section>'
     ].join('');
 
-    renderSectorCards();
+    const bw = document.getElementById('b2bBannerWrap');
+    if (bw && isB2B()) bw.innerHTML = bannerB2bHtml();
     loadHomePageDataGabungan();
     const brosurBtn = document.getElementById('brosurPdfBtn');
     if (brosurBtn && AppState.config.brosurPdfUrl) brosurBtn.style.display = 'inline-flex';
-}
-
-function renderSectorCards() {
-    const wrap = document.getElementById('sectorCardsWrap');
-    if (!wrap) return;
-    const cfg = AppState.config || {};
-    const DEFAULT_TITLE = { PortoRasa: 'Kuliner & Katering Nusantara', PortoKriya: 'Kerajinan & Souvenir Custom', PortoTani: 'Urban Farming & Hasil Tani' };
-    const DEFAULT_DESC = { PortoRasa: 'Snack box rapat, nasi box tradisional, sambal, dan bumbu kopi khas Cakung.', PortoKriya: 'Tas anyaman ramah lingkungan, gantungan kunci akrilik, plakat, dan pouch tenun.', PortoTani: 'Sayuran hidroponik bebas pestisida, madu murni, dan hasil kebun pekarangan.' };
-    const DEFAULT_TAGS = { PortoRasa: 'Snack Rapat,Nasi Box,Frozen Food', PortoKriya: 'Hampers Event,Tas Anyaman,Merchandise', PortoTani: 'Hidroponik Fresh,Madu Murni,Bibit Unggul' };
-    const sectorKeys = ['PortoRasa', 'PortoKriya', 'PortoTani'];
-    const sectors = sectorKeys.map(function(key) {
-        const tagsStr = cfg['sectorTags' + key] || DEFAULT_TAGS[key];
-        return {
-            key: key,
-            title: escapeHtml(cfg['sectorTitle' + key] || DEFAULT_TITLE[key]),
-            desc: escapeHtml(cfg['sectorDesc' + key] || DEFAULT_DESC[key]),
-            tags: tagsStr.split(',').map(function(t) { return t.trim(); }).filter(Boolean),
-            img: cfg['sectorImg' + key]
-        };
-    });
-    wrap.innerHTML = sectors.map(function(s) {
-        var imgSrc = s.img || ('https://placehold.co/480x300/8c2f3a/ffffff?text=' + encodeURIComponent(s.key));
-        return [
-          '<div class="sector-card" onclick="navigateTo(\'katalog\',{katalogFilter:{kategori:\'' + s.key + '\',subKategori:\'\',search:\'\',page:1}})" style="cursor:pointer;">',
-          '<div style="position:relative;">',
-          '<img class="sector-card-img" src="' + imgSrc + '" alt="' + s.key + '">',
-          '<span class="sector-tag">' + s.key + '</span>',
-          '</div>',
-          '<div class="p-4">',
-          '<h3 class="font-bold text-[15px]" style="color:var(--text-primary)">' + s.title + '</h3>',
-          '<p class="text-[13px] mt-1" style="color:var(--text-muted)">' + s.desc + '</p>',
-          '<div class="flex flex-wrap gap-1.5 mt-3 mb-3">',
-          s.tags.map(function(t) {
-              return '<span class="chip" style="height:26px; padding:0 10px; font-size:11px; cursor:pointer;" onclick="event.stopPropagation(); navigateTo(\'katalog\',{katalogFilter:{kategori:\'' + s.key + '\',subKategori:\'\',search:\'' + t.replace(/'/g, "\\'") + '\',page:1}})">' + escapeHtml(t) + '</span>';
-          }).join(''),
-          '</div>',
-          '<button class="btn-ghost w-full" onclick="event.stopPropagation(); navigateTo(\'katalog\',{katalogFilter:{kategori:\'' + s.key + '\',subKategori:\'\',search:\'\',page:1}})">Lihat Produk ' + s.key + ' <i class="bi bi-arrow-right"></i></button>',
-          '</div>',
-          '</div>'
-        ].join('');
-    }).join('');
 }
 
 let heroCarouselItems = [];
@@ -160,7 +106,7 @@ function renderPromoBannerSlider() {
             return '<span class="' + (i === promoBannerIndex ? 'active' : '') + '" onclick="event.stopPropagation(); goToPromoBanner(' + i + ')"></span>';
         }).join('');
         el.innerHTML = [
-          '<img class="promo-banner-slide" src="' + src + '" alt="' + escapeHtml(f.judul) + '" onclick="previewImage(\'' + f.gambar_url + '\',\'' + escapeHtml(f.judul) + '\')">',
+          '<img class="promo-banner-slide" src="' + escapeAttr(src) + '" alt="' + escapeAttr(f.judul) + '" onclick="previewPromoBanner(' + promoBannerIndex + ')">',
           '<div class="promo-banner-caption">',
           '<div class="text-[10px] font-bold uppercase tracking-wide opacity-80">' + escapeHtml(f.jenis || 'Promo') + '</div>',
           '<div class="font-bold text-sm md:text-base">' + escapeHtml(f.judul) + '</div>',
@@ -177,32 +123,35 @@ function renderPromoBannerSlider() {
     }
 }
 function goToPromoBanner(i) { promoBannerIndex = i; renderPromoBannerSlider(); }
+/** Klik banner membuka gambar besar; hanya membawa nomor urut (bukan teks judul) di atribut HTML. */
+function previewPromoBanner(i) {
+    const f = promoBannerData[i];
+    if (f) previewImage(f.gambar_url, f.judul);
+}
 
 /**
- * Muat SEMUA data Beranda (hero, banner promo, 3 baris katalog produk)
- * lewat 3 permintaan PARALEL (Promise.all) - Supabase tidak punya masalah
- * "mesin eksekusi simultan lambat" seperti GAS dulu, jadi aman ditembak
- * bersamaan. Cache per-bagian tetap dipakai supaya kunjungan berikutnya
- * ke Beranda dalam beberapa menit tetap instan.
+ * Muat data Beranda (hero, banner promo, produk unggulan per kategori) lewat
+ * 3 permintaan PARALEL. Produk unggulan mengikuti mode aktif (Ritel/Grosir);
+ * cache produk dipisah per mode supaya tidak tertukar saat customer berpindah mode.
  */
 function loadHomePageDataGabungan() {
+    const mode = modeAktif();
+    const kunciProduk = 'homeProdukKategori:' + mode;
     const cachedHero = ambilDariCache('heroCarousel');
     const cachedPromo = ambilDariCache('promoBanner');
-    const cachedProduk = ambilDariCache('homeProdukKategori');
+    const cachedProduk = ambilDariCache(kunciProduk);
     if (cachedHero && cachedPromo && cachedProduk) {
         heroCarouselItems = cachedHero;
         renderHeroCarousel();
         promoBannerData = cachedPromo;
         renderPromoBannerSlider();
-        renderProductGrid('homeProductGridRasa', cachedProduk.PortoRasa || []);
-        renderProductGrid('homeProductGridKriya', cachedProduk.PortoKriya || []);
-        renderProductGrid('homeProductGridTani', cachedProduk.PortoTani || []);
+        renderProdukBeranda(cachedProduk);
         return;
     }
     Promise.all([
         dbSelect('hero_carousel', { order: 'urutan', limit: 5 }),
         dbSelect('flyer_promo', { eq: { status: 'Aktif' }, limit: 3 }),
-        dbRpc('get_produk_unggulan_per_kategori', { per_kategori: 4 })
+        dbRpc('get_produk_unggulan_per_kategori', { per_kategori: 4, p_mode: mode })
     ]).then(function(results) {
         const heroRes = results[0], flyerRes = results[1], produkRes = results[2];
 
@@ -215,16 +164,32 @@ function loadHomePageDataGabungan() {
         simpanKeCache('promoBanner', promoBannerData);
         renderPromoBannerSlider();
 
-        const d = produkRes.success ? (produkRes.data || {}) : { PortoRasa: [], PortoKriya: [], PortoTani: [] };
-        simpanKeCache('homeProdukKategori', d);
-        renderProductGrid('homeProductGridRasa', d.PortoRasa || []);
-        renderProductGrid('homeProductGridKriya', d.PortoKriya || []);
-        renderProductGrid('homeProductGridTani', d.PortoTani || []);
+        const d = produkRes.success ? (produkRes.data || {}) : {};
+        simpanKeCache(kunciProduk, d);
+        if (mode === modeAktif()) renderProdukBeranda(d); // abaikan kalau customer sudah pindah mode selagi memuat
 
         if (!heroRes.success) showToast('Error', 'Gagal memuat hero: ' + heroRes.message, 'danger');
         if (!flyerRes.success) showToast('Error', 'Gagal memuat promo: ' + flyerRes.message, 'danger');
         if (!produkRes.success) showToast('Error', 'Gagal memuat produk: ' + produkRes.message, 'danger');
     });
+}
+/** Urutan baris produk di Beranda: Kuliner -> Pertanian -> Kerajinan. Baris kosong disembunyikan. */
+function renderProdukBeranda(d) {
+    const grup = [['homeProductGridRasa', d.PortoRasa], ['homeProductGridTani', d.PortoTani], ['homeProductGridKriya', d.PortoKriya]];
+    const adaIsi = grup.some(function(g) { return g[1] && g[1].length; });
+    grup.forEach(function(g, i) {
+        const el = document.getElementById(g[0]);
+        if (!el) return;
+        const items = g[1] || [];
+        if (items.length) { el.style.display = ''; renderProductGrid(g[0], items); }
+        else if (!adaIsi && i === 0) { el.style.display = ''; el.innerHTML = pesanKosongProduk(); }
+        else { el.style.display = 'none'; el.innerHTML = ''; }
+    });
+}
+function pesanKosongProduk() {
+    return isB2B()
+        ? '<div class="empty-state col-span-full"><i class="bi bi-boxes"></i>Belum ada produk grosir yang ditampilkan.<br><span class="text-xs">Anda tetap bisa menyampaikan kebutuhan lewat tombol "Buat RFQ Kustom Baru".</span></div>'
+        : '<div class="empty-state col-span-full"><i class="bi bi-inbox"></i>Belum ada produk untuk ditampilkan.</div>';
 }
 
 function downloadBrosurPdf() {
@@ -234,17 +199,21 @@ function downloadBrosurPdf() {
     document.body.appendChild(a); a.click(); a.remove();
 }
 
+/** Ambil hanya karakter aman untuk ID di atribut HTML (UUID). */
+function idAman(id) { return String(id == null ? '' : id).replace(/[^0-9a-zA-Z_-]/g, ''); }
+
 function renderProductGrid(containerId, items) {
     const el = document.getElementById(containerId);
     if (!el)
         return;
     if (!items || !items.length) {
-        el.innerHTML = '<div class="empty-state col-span-full"><i class="bi bi-inbox"></i>Belum ada produk untuk ditampilkan.</div>';
+        el.innerHTML = pesanKosongProduk();
         return;
     }
     const cardsHtml = [];
     items.forEach(function(p) {
         try {
+            AppState.produkIndex[String(p.id)] = p;
             cardsHtml.push(productCardHtml(p));
         } catch (err) {
             console.error('Gagal render 1 kartu produk:', err, p);
@@ -252,121 +221,151 @@ function renderProductGrid(containerId, items) {
     });
     el.innerHTML = cardsHtml.length ? cardsHtml.join('') : '<div class="empty-state col-span-full"><i class="bi bi-exclamation-triangle"></i>Data produk ada tapi gagal ditampilkan. Cek Console (F12).</div>';
 }
+
+/** Kotak harga untuk kartu mode Grosir: rentang harga bertingkat + MOQ. */
+function hargaGrosirKartuHtml(p) {
+    const satuan = String(p.satuan || 'pcs');
+    const moq = Number(p.moq_grosir) || 1;
+    const min = p.grosir_min != null ? Number(p.grosir_min) : null;
+    const max = p.grosir_max != null ? Number(p.grosir_max) : null;
+    const baris1 = min != null
+        ? '<span class="pu-b2b-lbl">Harga Grosir Mula:</span><span class="pu-b2b-price">' + (max != null && max !== min ? formatRupiah(min) + ' - ' + formatRupiah(max) : formatRupiah(min)) + '</span>'
+        : '<span class="pu-b2b-lbl">Harga Grosir:</span><span class="pu-b2b-price pu-b2b-rfq">Via penawaran (RFQ)</span>';
+    const baris2 = '<span class="pu-b2b-lbl">MOQ Grosir:</span><b>' + moq + ' ' + escapeHtml(satuan) + '</b>' + (min != null ? '<span class="pu-tiered-tag">Tiered Price</span>' : '');
+    return '<div class="pu-b2b-box"><div class="pu-b2b-row">' + baris1 + '</div><div class="pu-b2b-row">' + baris2 + '</div></div>';
+}
+function labelAksiKartu(p) {
+    if (isB2B()) return '<i class="bi bi-file-earmark-text"></i> RFQ B2B';
+    if (daftarWarna(p).length) return '<i class="bi bi-palette"></i> Pilih Warna';
+    if (p.tipe_pemesanan === 'Paket') return '<i class="bi bi-list-check"></i> Pilih Paket';
+    if (p.tipe_pemesanan === 'Custom') return '<i class="bi bi-pencil-square"></i> Pesan Custom';
+    return '<i class="bi bi-cart-plus"></i> Keranjang';
+}
+/**
+ * Kartu produk. SEMUA tombol hanya membawa ID produk (bukan nama/deskripsi),
+ * sehingga teks bebas yang memuat tanda kutip tidak bisa merusak tombolnya.
+ */
 function productCardHtml(p) {
-    const hargaNormal = Number(p.harga_normal) || 0;
-    const hargaPromo = p.harga_promo !== '' && p.harga_promo != null ? Number(p.harga_promo) : null;
-    const hargaTampil = hargaPromo || hargaNormal;
-    const diskon = hargaPromo ? Math.round((1 - hargaPromo / hargaNormal) * 100) : 0;
-    const badgeText = p.badge ? escapeHtml(String(p.badge)) : (diskon > 0 ? ('-' + diskon + '%') : '');
-    const ratingNum = Number(p.rating);
-    const ratingVal = isFinite(ratingNum) ? ratingNum : 0;
+    const b2b = isB2B();
+    const id = idAman(p.id);
     const namaProduk = String(p.nama_produk || '');
     const namaUMKM = String(p.nama_umkm || '');
     const kategori = String(p.kategori || '');
     const satuan = String(p.satuan || 'pcs');
-    const produkId = String(p.id || '');
     const deskripsi = String(p.deskripsi || '');
-    const img = p.foto_url ? ('<img src="' + p.foto_url + '" alt="' + escapeHtml(namaProduk) + '">') : '<div class="no-img"><i class="bi bi-image"></i></div>';
+    const tipe = p.tipe_pemesanan || 'Standar';
+    const ratingNum = Number(p.rating);
+    const ratingVal = isFinite(ratingNum) ? ratingNum : 0;
+    const img = p.foto_url ? ('<img src="' + escapeAttr(p.foto_url) + '" alt="' + escapeAttr(namaProduk) + '" loading="lazy">') : '<div class="no-img"><i class="bi bi-image"></i></div>';
+    let badgeText = p.badge ? escapeHtml(String(p.badge)) : '';
+    let hargaHtml;
+    if (b2b) {
+        hargaHtml = hargaGrosirKartuHtml(p);
+    } else {
+        const normal = Number(p.harga_normal) || 0;
+        const promo = (p.harga_promo !== '' && p.harga_promo != null) ? Number(p.harga_promo) : null;
+        const tampil = hargaRitelProduk(p);
+        const diskon = (promo && normal > 0) ? Math.round((1 - promo / normal) * 100) : 0;
+        if (!badgeText && diskon > 0) badgeText = '-' + diskon + '%';
+        hargaHtml = (tipe === 'Custom' && tampil === 0)
+            ? '<div class="product-price-row"><span class="price-now" style="font-size:14px;">Sesuai budget Anda</span></div>'
+            : '<div class="product-price-row"><span class="price-now">' + formatRupiah(tampil) + '</span><span class="price-unit">/ ' + escapeHtml(satuan) + '</span></div>' + (promo ? '<span class="price-old">' + formatRupiah(normal) + '</span>' : '');
+    }
+    const cert = sertifikatChipsHtml(p, 3);
     return [
-      '<div class="product-card" onclick="navigateTo(\'produkDetail\',{produkId:\'' + produkId + '\'})">',
+      '<div class="product-card pu-card' + (b2b ? ' pu-card-b2b' : '') + '" onclick="bukaDetailProduk(\'' + id + '\')">',
       '<div class="product-card-img-wrap">',
       img,
       badgeText ? ('<span class="badge-discount">' + badgeText + '</span>') : '',
       ratingVal > 0 ? ('<span class="badge-rating"><i class="bi bi-star-fill"></i> ' + ratingVal.toFixed(1) + (p.jumlah_ulasan ? (' (' + p.jumlah_ulasan + ')') : '') + '</span>') : '',
       '</div>',
       '<div class="product-card-body">',
-      '<div class="product-umkm-row">',
-      '<span class="badge-category" style="position:static;">' + escapeHtml(kategori) + '</span>',
-      '</div>',
+      '<div class="product-umkm-row"><span class="badge-category" style="position:static;">' + escapeHtml(kategori) + '</span></div>',
       '<div class="product-umkm"><i class="bi bi-shop"></i> ' + escapeHtml(namaUMKM) + '</div>',
       '<div class="product-title">' + escapeHtml(namaProduk) + '</div>',
-      deskripsi ? ('<div class="product-desc">' + escapeHtml(deskripsi) + '</div>') : '',
-      '<div class="product-price-row">',
-      '<span class="price-now">' + formatRupiah(hargaTampil) + '</span>',
-      '<span class="price-unit">/ ' + escapeHtml(satuan) + '</span>',
+      (!b2b && deskripsi) ? ('<div class="product-desc">' + escapeHtml(deskripsi) + '</div>') : '',
+      hargaHtml,
+      cert ? ('<div class="pu-cert-wrap pu-cert-card">' + cert + '</div>') : '',
       '</div>',
-      hargaPromo ? ('<span class="price-old">' + formatRupiah(hargaNormal) + '</span>') : '',
-      '</div>',
-      '<div class="product-card-footer" onclick="event.stopPropagation()">',
-      tombolKeranjangHtml(p.tipe_pemesanan, produkId, namaProduk, hargaTampil, satuan, namaUMKM),
-      (waLinkHref(namaProduk, namaUMKM, hargaTampil) ? ('<a class="btn-icon-sm" href="' + waLinkHref(namaProduk, namaUMKM, hargaTampil) + '" target="_blank" rel="noopener" title="Tanya via WA"><i class="bi bi-whatsapp"></i></a>') : ''),
+      '<div class="product-card-footer pu-card-actions" onclick="event.stopPropagation()">',
+      '<button type="button" class="btn-ghost" onclick="bukaDetailProduk(\'' + id + '\')"><i class="bi bi-eye"></i> Detail</button>',
+      '<button type="button" class="btn-primary" onclick="aksiUtamaKartu(\'' + id + '\')">' + labelAksiKartu(p) + '</button>',
       '</div>',
       '</div>'
     ].join('');
 }
-/**
- * Tombol keranjang bercabang sesuai tipe_pemesanan produk:
- * - 'Paket'  -> buka popup pilih varian paket dulu, baru masuk keranjang
- * - 'Custom' -> buka popup isi budget + menu custom (opsional) dulu
- * - lainnya ('Standar')  -> langsung masuk keranjang seperti biasa
- */
-function tombolKeranjangHtml(tipePemesanan, produkId, namaProduk, harga, satuan, namaUMKM) {
-    const namaEsc = escapeHtml(namaProduk).replace(/'/g, "\\'");
-    const satuanEsc = escapeHtml(satuan).replace(/'/g, "\\'");
-    const umkmEsc = escapeHtml(namaUMKM).replace(/'/g, "\\'");
-    if (tipePemesanan === 'Paket') {
-        return '<button class="btn-primary flex-1" onclick="bukaPilihPaket(\'' + produkId + '\')"><i class="bi bi-list-check"></i> Pilih Paket</button>';
+/** Tombol utama di kartu: perilaku bergantung pada mode dan jenis produk. */
+function aksiUtamaKartu(id) {
+    const p = AppState.produkIndex[id];
+    if (!p) return;
+    if (isB2B()) { bukaRfqUntukProdukId(id, 'RFQ'); return; }
+    if (daftarWarna(p).length) { bukaDetailProduk(id); return; } // warna wajib dipilih dulu di popup detail
+    if (p.tipe_pemesanan === 'Paket') { bukaPilihPaket(id, ''); return; }
+    if (p.tipe_pemesanan === 'Custom') {
+        bukaPesananCustom({ id: p.id, nama: p.nama_produk, harga: hargaRitelProduk(p), satuan: p.satuan || 'pcs', umkm: p.nama_umkm, warna: '' });
+        return;
     }
-    if (tipePemesanan === 'Custom') {
-        return '<button class="btn-primary flex-1" onclick="bukaPesananCustom(\'' + produkId + '\',\'' + namaEsc + '\',' + harga + ',\'' + satuanEsc + '\',\'' + umkmEsc + '\')"><i class="bi bi-pencil-square"></i> Pesan Custom</button>';
-    }
-    return '<button class="btn-primary flex-1" onclick="addToCart(\'' + produkId + '\',\'' + namaEsc + '\',' + harga + ',\'' + satuanEsc + '\',\'' + umkmEsc + '\')"><i class="bi bi-cart-plus"></i> Keranjang</button>';
+    addToCart(p.id, p.nama_produk, hargaRitelProduk(p), p.satuan || 'pcs', p.nama_umkm);
 }
 
 // -------------------- POPUP PILIH PAKET --------------------
-function bukaPilihPaket(produkId) {
+let paketAktif = null;
+function bukaPilihPaket(produkId, warna) {
     document.getElementById('previewModalTitle').textContent = 'Pilih Paket';
     document.getElementById('previewModalContent').innerHTML = '<div class="empty-state"><div class="spinner-brand" style="margin:0 auto;"></div></div>';
     openModal('previewModal');
-    Promise.all([
-        dbSelect('produk', { eq: { id: produkId }, single: true }),
-        dbRpc('get_produk_paket', { p_produk_id: produkId })
-    ]).then(function(results) {
-        const produkRes = results[0], paketRes = results[1];
-        if (!produkRes.success) {
-            document.getElementById('previewModalContent').innerHTML = '<p class="text-sm" style="color:var(--text-muted)">Gagal memuat data produk: ' + escapeHtml(produkRes.message) + '</p>';
+    dbRpc('get_produk_detail', { p_id: produkId }).then(function(res) {
+        if (!res.success || !res.data || !res.data.produk) {
+            document.getElementById('previewModalContent').innerHTML = '<p class="text-sm" style="color:var(--text-muted)">Gagal memuat data paket' + (res.success ? '.' : ': ' + escapeHtml(res.message)) + '</p>';
             return;
         }
-        const p = produkRes.data;
-        const pakets = (paketRes.success && paketRes.data) ? paketRes.data : [];
-        if (!pakets.length) {
-            document.getElementById('previewModalContent').innerHTML = '<p class="text-sm" style="color:var(--text-muted)">Belum ada paket tersedia untuk produk ini. Silakan hubungi Admin.</p>';
-            return;
-        }
-        const hargaDasar = (p.harga_promo !== '' && p.harga_promo != null) ? Number(p.harga_promo) : Number(p.harga_normal) || 0;
-        document.getElementById('previewModalContent').innerHTML = '<div class="text-left">' +
-            pakets.map(function(pk) {
-                const harga = (pk.harga !== null && pk.harga !== undefined && pk.harga !== '') ? Number(pk.harga) : hargaDasar;
-                const onclickArgs = [p.id, p.nama_produk, pk.nama_paket, harga, p.satuan, p.nama_umkm, pk.deskripsi_menu || ''].map(function(v) { return JSON.stringify(v); }).join(',');
-                return [
-                  '<div class="card p-3 mb-2" style="cursor:pointer;" onclick=\'pilihPaketDanTambahKeranjang(' + onclickArgs + ')\'>',
-                  '<div class="font-bold" style="color:var(--text-primary)">' + escapeHtml(pk.nama_paket) + '</div>',
-                  pk.deskripsi_menu ? ('<div class="text-xs mt-1" style="color:var(--text-muted)">' + escapeHtml(pk.deskripsi_menu) + '</div>') : '',
-                  '<div class="font-bold mt-2" style="color:var(--primary)">' + formatRupiah(harga) + ' <span class="text-xs font-normal" style="color:var(--text-muted)">/ ' + escapeHtml(p.satuan) + '</span></div>',
-                  '</div>'
-                ].join('');
-            }).join('') +
-            '</div>';
+        tampilkanPilihPaket(res.data.produk, res.data.paket || [], warna || '');
     });
 }
-function pilihPaketDanTambahKeranjang(produkId, namaProduk, namaPaket, harga, satuan, umkm, deskripsiMenu) {
-    addToCart(produkId, namaProduk + ' - ' + namaPaket, harga, satuan, umkm, 1, deskripsiMenu);
+function tampilkanPilihPaket(p, pakets, warna) {
+    document.getElementById('previewModalTitle').textContent = 'Pilih Paket';
+    openModal('previewModal');
+    if (!pakets.length) {
+        document.getElementById('previewModalContent').innerHTML = '<p class="text-sm" style="color:var(--text-muted)">Belum ada paket tersedia untuk produk ini. Silakan hubungi Admin.</p>';
+        return;
+    }
+    paketAktif = { p: p, pakets: pakets, warna: warna || '' };
+    const hargaDasar = hargaRitelProduk(p);
+    document.getElementById('previewModalContent').innerHTML = '<div class="text-left">' +
+        '<p class="font-bold mb-2" style="color:var(--text-primary)">' + escapeHtml(p.nama_produk) + '</p>' +
+        (warna ? '<p class="text-xs mb-2" style="color:var(--text-muted)">Warna dipilih: <b>' + escapeHtml(warna) + '</b></p>' : '') +
+        pakets.map(function(pk, i) {
+            const harga = (pk.harga !== null && pk.harga !== undefined && pk.harga !== '') ? Number(pk.harga) : hargaDasar;
+            return [
+              '<div class="card p-3 mb-2" style="cursor:pointer;" onclick="pilihPaketIdx(' + i + ')">',
+              '<div class="font-bold" style="color:var(--text-primary)">' + escapeHtml(pk.nama_paket) + '</div>',
+              pk.deskripsi_menu ? ('<div class="text-xs mt-1" style="color:var(--text-muted)">' + escapeHtml(pk.deskripsi_menu) + '</div>') : '',
+              '<div class="font-bold mt-2" style="color:var(--primary)">' + formatRupiah(harga) + ' <span class="text-xs font-normal" style="color:var(--text-muted)">/ ' + escapeHtml(p.satuan || 'pcs') + '</span></div>',
+              '</div>'
+            ].join('');
+        }).join('') + '</div>';
+}
+function pilihPaketIdx(i) {
+    const a = paketAktif;
+    if (!a || !a.pakets[i]) return;
+    const p = a.p, pk = a.pakets[i];
+    const harga = (pk.harga !== null && pk.harga !== undefined && pk.harga !== '') ? Number(pk.harga) : hargaRitelProduk(p);
+    addToCart(p.id, p.nama_produk + ' - ' + pk.nama_paket, harga, p.satuan || 'pcs', p.nama_umkm, 1, pk.deskripsi_menu || '', a.warna);
     closeModal('previewModal');
 }
 
 // -------------------- POPUP PESANAN CUSTOM --------------------
-function bukaPesananCustom(produkId, namaProduk, hargaDasar, satuan, umkm) {
+let customAktif = null;
+/** @param {{id:string, nama:string, harga:number, satuan:string, umkm:string, warna:string}} info */
+function bukaPesananCustom(info) {
+    customAktif = info;
     document.getElementById('previewModalTitle').textContent = 'Pesanan Custom';
     document.getElementById('previewModalContent').innerHTML = [
       '<form onsubmit="submitPesananCustom(event)" class="text-left">',
-      '<input type="hidden" id="cuProdukId" value="', produkId, '">',
-      '<input type="hidden" id="cuNamaProduk" value="', escapeHtml(namaProduk), '">',
-      '<input type="hidden" id="cuHargaDasar" value="', hargaDasar, '">',
-      '<input type="hidden" id="cuSatuan" value="', escapeHtml(satuan), '">',
-      '<input type="hidden" id="cuUmkm" value="', escapeHtml(umkm), '">',
-      '<p class="font-bold mb-1" style="color:var(--text-primary)">' + escapeHtml(namaProduk) + '</p>',
+      '<p class="font-bold mb-1" style="color:var(--text-primary)">' + escapeHtml(info.nama) + '</p>',
+      info.warna ? ('<p class="text-xs mb-1" style="color:var(--text-muted)">Warna dipilih: <b>' + escapeHtml(info.warna) + '</b></p>') : '',
       '<p class="text-xs mb-3" style="color:var(--text-muted)">Kosongkan kalau tidak ada permintaan khusus - bisa didiskusikan langsung lewat WhatsApp setelah pesanan dikirim.</p>',
-      '<div class="form-group"><label class="form-label">Budget per ', escapeHtml(satuan), ' (Rp) - opsional</label><input class="form-input" type="number" id="cuBudget" placeholder="mis. 25000"></div>',
+      '<div class="form-group"><label class="form-label">Budget per ' + escapeHtml(info.satuan) + ' (Rp) - opsional</label><input class="form-input" type="number" id="cuBudget" placeholder="mis. 25000"></div>',
       '<div class="form-group"><label class="form-label">Menu yang Diinginkan - opsional</label><textarea class="form-textarea" id="cuMenu" placeholder="mis. nasi goreng seafood, tanpa pedas"></textarea></div>',
       '<button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-cart-plus"></i> Tambahkan ke Keranjang</button>',
       '</form>'
@@ -375,20 +374,18 @@ function bukaPesananCustom(produkId, namaProduk, hargaDasar, satuan, umkm) {
 }
 function submitPesananCustom(e) {
     e.preventDefault();
-    const produkId = document.getElementById('cuProdukId').value;
-    const namaProduk = document.getElementById('cuNamaProduk').value;
-    const hargaDasar = Number(document.getElementById('cuHargaDasar').value) || 0;
-    const satuan = document.getElementById('cuSatuan').value;
-    const umkm = document.getElementById('cuUmkm').value;
+    const c = customAktif;
+    if (!c) return;
     const budget = document.getElementById('cuBudget').value;
     const menu = document.getElementById('cuMenu').value.trim();
-    const harga = budget ? Number(budget) : hargaDasar;
+    const harga = budget ? Number(budget) : (Number(c.harga) || 0);
     let catatan = '';
-    if (budget) catatan += 'Budget: ' + formatRupiah(Number(budget)) + '/' + satuan;
+    if (budget) catatan += 'Budget: ' + formatRupiah(Number(budget)) + '/' + c.satuan;
     if (menu) catatan += (catatan ? ' | ' : '') + 'Menu: ' + menu;
-    addToCart(produkId, namaProduk, harga, satuan, umkm, 1, catatan);
+    addToCart(c.id, c.nama, harga, c.satuan, c.umkm, 1, catatan, c.warna || '');
     closeModal('previewModal');
 }
+
 function previewImage(url, title) {
     if (!url)
         return;
@@ -400,11 +397,13 @@ function previewImage(url, title) {
 // -------------------- SEMUA PRODUK (KATALOG) --------------------
 function renderKatalogPage() {
     const f = AppState.katalogFilter;
+    const b2b = isB2B();
     const container = document.getElementById('app-container');
     container.innerHTML = [
       '<div class="page-wrap">',
-      '<h1 class="text-xl md:text-2xl font-extrabold mb-1" style="color:var(--text-primary)">Semua Produk</h1>',
-      '<p class="text-sm mb-4" style="color:var(--text-muted)">Direktori resmi produk UMKM binaan PPU UT Cakung.</p>',
+      '<h1 class="text-xl md:text-2xl font-extrabold mb-1" style="color:var(--text-primary)">' + (b2b ? 'Katalog Produk Grosir' : 'Semua Produk') + '</h1>',
+      '<p class="text-sm mb-4" style="color:var(--text-muted)">' + (b2b ? 'Harga grosir bertingkat dan MOQ untuk kebutuhan perusahaan, langsung dari UMKM binaan PPU UT Cakung.' : 'Direktori resmi produk UMKM binaan PPU UT Cakung.') + '</p>',
+      b2b ? bannerB2bHtml() : '',
       '<div class="card p-3 md:p-4 mb-4">',
       '<div class="flex flex-wrap gap-2 mb-3" id="katalogSektorChips"></div>',
       '<div class="flex flex-wrap items-center gap-2 text-xs" id="katalogTagCepat"><span class="font-bold uppercase" style="color:var(--text-muted); letter-spacing:.03em;">Tag Cepat:</span></div>',
@@ -412,7 +411,7 @@ function renderKatalogPage() {
       '<div class="flex items-center justify-between mb-3 flex-wrap gap-2">',
       '<div id="katalogResultInfo" class="text-sm" style="color:var(--text-muted)"></div>',
       '<select id="katalogSortSelect" class="form-select" style="width:auto; height:36px;" onchange="AppState.katalogSort=this.value; renderKatalogItems();">',
-      '<option value="terbaru">Terbaru</option>',
+      '<option value="terbaru">Urutan Utama</option>',
       '<option value="harga_rendah">Harga Terendah</option>',
       '<option value="harga_tinggi">Harga Tertinggi</option>',
       '</select>',
@@ -422,14 +421,17 @@ function renderKatalogPage() {
       '</div>'
     ].join('');
 
+    // Urutan kategori: Kuliner -> Pertanian -> Kerajinan. "Paket Promo" & "Sering Dipesan" hanya di mode ritel.
     const sektorList = [
         { key: 'Semua', label: 'Semua Produk' },
         { key: 'PortoRasa', label: 'PortoRasa (Kuliner)' },
-        { key: 'PortoKriya', label: 'PortoKriya (Kerajinan)' },
         { key: 'PortoTani', label: 'PortoTani (Pertanian)' },
-        { key: 'PromoB2B', label: 'Paket Promo' },
-        { key: 'SeringDipesan', label: 'Produk Sering Dipesan' }
+        { key: 'PortoKriya', label: 'PortoKriya (Kerajinan)' }
     ];
+    if (!b2b) {
+        sektorList.push({ key: 'PromoB2B', label: 'Paket Promo' });
+        sektorList.push({ key: 'SeringDipesan', label: 'Produk Sering Dipesan' });
+    }
     document.getElementById('katalogSektorChips').innerHTML = sektorList.map(function(s) {
         return '<button class="chip chip-solid ' + (f.kategori === s.key ? 'active' : '') + '" onclick="setKatalogKategori(\'' + s.key + '\')">' + s.label + '</button>';
     }).join('');
@@ -459,10 +461,13 @@ function setKatalogKategori(k) {
     renderKatalogPage();
 }
 let katalogRawItems = [];
+let katalogReq = 0;
 
 function loadKatalogData() {
     const f = AppState.katalogFilter;
-    const cacheKey = 'katalog:' + JSON.stringify(f);
+    const mode = modeAktif();
+    const cacheKey = 'katalog:' + mode + ':' + JSON.stringify(f);
+    const req = ++katalogReq; // jawaban lama yang datang terlambat diabaikan
     const cached = ambilDariCache(cacheKey);
     if (cached) {
         katalogRawItems = cached.items;
@@ -477,10 +482,14 @@ function loadKatalogData() {
         p_sub_kategori: f.subKategori || '',
         p_search: f.search || '',
         p_page: f.page || 1,
-        p_per_page: f.perPage || 40
+        p_per_page: f.perPage || 40,
+        p_mode: mode
     }).then(function(res) {
-        if (!res.success) {
-            showToast('Error', res.message, 'danger');
+        if (req !== katalogReq) return;
+        if (!res.success || !res.data) {
+            showToast('Error', res.message || 'Gagal memuat produk.', 'danger');
+            katalogRawItems = [];
+            renderProductGrid('katalogGrid', []);
             return;
         }
         simpanKeCache(cacheKey, res.data);
@@ -490,12 +499,17 @@ function loadKatalogData() {
         renderKatalogPagination(res.data);
     });
 }
+/** Acuan harga untuk pengurutan: harga grosir terendah di mode grosir, harga ritel di mode ritel. */
+function hargaUrutKatalog(p) {
+    if (isB2B() && p.grosir_min != null) return Number(p.grosir_min);
+    return hargaRitelProduk(p);
+}
 function renderKatalogItems() {
     let items = katalogRawItems.slice();
     if (AppState.katalogSort === 'harga_rendah')
-        items.sort((a, b) => (a.harga_promo || a.harga_normal) - (b.harga_promo || b.harga_normal));
+        items.sort((a, b) => hargaUrutKatalog(a) - hargaUrutKatalog(b));
     if (AppState.katalogSort === 'harga_tinggi')
-        items.sort((a, b) => (b.harga_promo || b.harga_normal) - (a.harga_promo || a.harga_normal));
+        items.sort((a, b) => hargaUrutKatalog(b) - hargaUrutKatalog(a));
     renderProductGrid('katalogGrid', items);
 }
 
@@ -552,89 +566,3 @@ function renderMitraGrid(items) {
     }).join('');
 }
 
-// -------------------- DETAIL PRODUK --------------------
-function renderProdukDetailPage(produkId) {
-    const container = document.getElementById('app-container');
-    container.innerHTML = '<div class="page-wrap"><div class="empty-state"><div class="spinner-brand" style="margin:0 auto;"></div></div></div>';
-    dbSelect('produk', { eq: { id: produkId }, single: true }).then(function(res) {
-        if (!res.success) {
-            container.innerHTML = '<div class="page-wrap empty-state"><i class="bi bi-exclamation-circle"></i>' + res.message + '</div>';
-            return;
-        }
-        const p = res.data;
-        const hargaNormal = Number(p.harga_normal) || 0;
-        const hargaPromo = p.harga_promo !== '' && p.harga_promo != null ? Number(p.harga_promo) : null;
-        const hargaTampil = hargaPromo || hargaNormal;
-        const foto1 = p.foto_url || '';
-        const foto2 = p.foto_url2 || '';
-        const fotoList = [foto1, foto2].filter(Boolean);
-        const mainFotoSrc = fotoList[0] || '';
-        const mainFotoHtml = mainFotoSrc
-            ? ('<img id="detailMainFoto" src="' + mainFotoSrc + '" alt="' + escapeHtml(p.nama_produk) + '">')
-            : '<div class="no-img"><i class="bi bi-image" style="font-size:56px;"></i></div>';
-        const thumbHtml = fotoList.length > 1 ? fotoList.map(function(src) {
-            return '<img src="' + src + '" onclick="gantiFotoDetail(this.src)" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);cursor:pointer;">';
-        }).join('') : '';
-        container.innerHTML = [
-          '<div class="page-wrap">',
-          '<button class="btn-ghost mb-4" onclick="navigateTo(\'katalog\')"><i class="bi bi-arrow-left"></i> Kembali ke Katalog</button>',
-          '<div class="grid gap-6" style="grid-template-columns:1fr;" id="detailGridWrap">',
-          '<div>',
-          '<div class="product-card-img-wrap card" style="aspect-ratio:1/1; max-width:420px;">', mainFotoHtml, '</div>',
-          thumbHtml ? ('<div class="flex gap-2 mt-2">' + thumbHtml + '</div>') : '',
-          '</div>',
-          '<div>',
-          '<span class="badge-category" style="position:static;">', escapeHtml(p.kategori), ' - ', escapeHtml(p.sub_kategori || ''), '</span>',
-          '<h1 class="text-2xl font-extrabold mt-2" style="color:var(--text-primary)">', escapeHtml(p.nama_produk), '</h1>',
-          '<div class="product-umkm mt-1" style="font-size:13px;"><i class="bi bi-shop"></i> ', escapeHtml(p.nama_umkm), '</div>',
-          '<div class="flex items-baseline gap-3 mt-3">',
-          '<span class="price-now" style="font-size:24px;">', formatRupiah(hargaTampil), '</span>',
-          '<span class="price-unit">/ ', escapeHtml(p.satuan || 'pcs'), '</span>',
-          hargaPromo ? ('<span class="price-old">' + formatRupiah(hargaNormal) + '</span>') : '',
-          '</div>',
-          p.minimal_order ? ('<div class="text-xs mt-1" style="color:var(--text-muted);"><i class="bi bi-info-circle"></i> Minimal Order: ' + escapeHtml(p.minimal_order) + '</div>') : '',
-          '<p class="mt-4 text-[14px]" style="color:var(--text-body); line-height:1.6;">', escapeHtml(p.deskripsi), '</p>',
-          '<div class="flex gap-2 mt-6 flex-wrap">',
-          '<div class="qty-stepper">',
-          '<button onclick="stepDetailQty(-1)">-</button>',
-          '<span id="detailQty">1</span>',
-          '<button onclick="stepDetailQty(1)">+</button>',
-          '</div>',
-          tombolKeranjangDetailHtml(p, hargaTampil),
-          '<a class="btn-wa" style="height:44px; padding:0 20px;" href="' + waLinkHref(p.nama_produk, p.nama_umkm, hargaTampil) + '" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Tanya Admin</a>',
-          '</div>',
-          '</div>',
-          '</div>',
-          '</div>'
-        ].join('');
-        const wrap = document.getElementById('detailGridWrap');
-        if (window.innerWidth >= 768) wrap.style.gridTemplateColumns = '380px 1fr';
-    });
-}
-function gantiFotoDetail(src) {
-    const el = document.getElementById('detailMainFoto');
-    if (el) el.src = src;
-}
-let detailQty = 1;
-function stepDetailQty(delta) {
-    detailQty = Math.max(1, detailQty + delta);
-    document.getElementById('detailQty').textContent = detailQty;
-}
-function addToCartFromDetail(id, nama, harga, satuan, umkm) {
-    addToCart(id, nama, harga, satuan, umkm, detailQty);
-    detailQty = 1;
-}
-/** Sama seperti tombolKeranjangHtml() di kartu produk, versi untuk halaman Detail Produk (qty lewat qty-stepper). */
-function tombolKeranjangDetailHtml(p, hargaTampil) {
-    const produkId = String(p.id || '');
-    const namaEsc = escapeHtml(p.nama_produk).replace(/'/g, "\\'");
-    const satuanEsc = escapeHtml(p.satuan || 'pcs').replace(/'/g, "\\'");
-    const umkmEsc = escapeHtml(p.nama_umkm).replace(/'/g, "\\'");
-    if (p.tipe_pemesanan === 'Paket') {
-        return '<button class="btn-primary" style="height:44px; padding:0 20px;" onclick="bukaPilihPaket(\'' + produkId + '\')"><i class="bi bi-list-check"></i> Pilih Paket</button>';
-    }
-    if (p.tipe_pemesanan === 'Custom') {
-        return '<button class="btn-primary" style="height:44px; padding:0 20px;" onclick="bukaPesananCustom(\'' + produkId + '\',\'' + namaEsc + '\',' + hargaTampil + ',\'' + satuanEsc + '\',\'' + umkmEsc + '\')"><i class="bi bi-pencil-square"></i> Pesan Custom</button>';
-    }
-    return '<button class="btn-primary" style="height:44px; padding:0 20px;" onclick="addToCartFromDetail(\'' + produkId + '\',\'' + namaEsc + '\',' + hargaTampil + ',\'' + satuanEsc + '\',\'' + umkmEsc + '\')"><i class="bi bi-cart-plus"></i> Tambah ke Keranjang</button>';
-}

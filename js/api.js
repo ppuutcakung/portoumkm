@@ -165,7 +165,8 @@ async function authUpdateUser(updates) {
  * apa adanya. Kalau konversi gagal karena alasan apapun, file ASLI dipakai
  * sebagai fallback aman (upload tetap jalan, cuma tidak terkonversi).
  */
-function convertToWebP(fileOrBlob, namaFile) {
+function convertToWebP(fileOrBlob, namaFile, opts) {
+    const maxSisi = (opts && opts.maxSisi) || 0; // 0 = ukuran asli; >0 = sisi terpanjang dibatasi (px)
     return new Promise(function(resolve) {
         const tipe = fileOrBlob.type || '';
         if (!tipe.startsWith('image/') || tipe === 'image/webp') {
@@ -177,10 +178,16 @@ function convertToWebP(fileOrBlob, namaFile) {
         img.onload = function() {
             try {
                 const canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
+                let w = img.naturalWidth, h = img.naturalHeight;
+                if (maxSisi && Math.max(w, h) > maxSisi) {
+                    const skala = maxSisi / Math.max(w, h);
+                    w = Math.round(w * skala);
+                    h = Math.round(h * skala);
+                }
+                canvas.width = w;
+                canvas.height = h;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
+                ctx.drawImage(img, 0, 0, w, h);
                 URL.revokeObjectURL(url);
                 canvas.toBlob(function(blob) {
                     if (!blob) { resolve(fileOrBlob); return; }
@@ -200,8 +207,8 @@ function convertToWebP(fileOrBlob, namaFile) {
     });
 }
 
-async function uploadFile(file, folderKey) {
-    const fileUntukDiunggah = await convertToWebP(file, file.name);
+async function uploadFile(file, folderKey, opts) {
+    const fileUntukDiunggah = await convertToWebP(file, file.name, opts);
     return new Promise(function(resolve) {
         const reader = new FileReader();
         reader.onload = async function() {

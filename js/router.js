@@ -4,6 +4,7 @@
  * ============================================================
  */
 document.addEventListener('DOMContentLoaded', () => {
+    initMode(); // pulihkan pilihan Ritel/Grosir terakhir & pasang warna temanya sebelum halaman pertama digambar
     const safetyTimeout = setTimeout(() => {
         hideLoadingOverlay();
         showToast('Peringatan', 'Inisialisasi lambat/gagal. Cek koneksi atau buka Console (F12) untuk detail error.', 'warning');
@@ -90,6 +91,7 @@ function navigateTo(pageName, options) {
     if (ADMIN_PAGES.includes(pageName) && !AppState.session) {
         pageName = 'adminLogin';
     }
+    if (pageName === 'keranjang') paksaModeRitel(); // keranjang = alur pesanan ritel; pesanan grosir lewat RFQ
     const isAdminPage = ADMIN_PAGES.includes(pageName);
     document.body.classList.toggle('admin-mode', isAdminPage);
     document.getElementById('adminSidebar').classList.toggle('hidden', !isAdminPage);
@@ -112,7 +114,6 @@ function navigateTo(pageName, options) {
         home: renderHomePage,
         katalog: renderKatalogPage,
         mitra: renderMitraPage,
-        produkDetail: () => renderProdukDetailPage(options.produkId),
         keranjang: renderKeranjangPage,
         adminLogin: renderAdminLoginPage,
         adminDashboard: renderAdminDashboardPage,
@@ -122,6 +123,7 @@ function navigateTo(pageName, options) {
         adminMitra: renderAdminMitraPage,
         adminUmkm: renderAdminUmkmPage,
         adminPembayaran: renderAdminPembayaranPage,
+        adminRfq: renderAdminRfqPage,
         adminSettings: renderAdminSettingsPage
     };
     if (options.katalogFilter)

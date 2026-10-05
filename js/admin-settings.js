@@ -133,23 +133,39 @@ async function konversiSemuaFotoLama() {
 
     let totalDiproses = 0, totalBerhasil = 0, totalDilewati = 0;
 
-    // --- Produk (foto_url & foto_url2) ---
+    // --- Produk (semua foto di galeri; foto_url/foto_path = cerminan foto utama) ---
     const produkRes = await dbSelect('produk');
     const produkList = produkRes.success ? produkRes.data : [];
     for (const p of produkList) {
-        for (const pasangan of [['foto_url', 'foto_path'], ['foto_url2', 'foto_path2']]) {
-            const [urlKey, pathKey] = pasangan;
-            if (!p[urlKey]) continue;
+        const galeri = galeriDariProduk(p);
+        if (!galeri.length) continue;
+        const galeriBaru = [];
+        const hapusNanti = [];
+        let konversiBerhasil = 0;
+        for (const f of galeri) {
             totalDiproses++;
-            const hasil = await konversiSatuGambar(p[urlKey], 'uploadFolderId');
-            if (hasil.sudahWebp) { totalDilewati++; continue; }
+            const hasil = await konversiSatuGambar(f.url, 'uploadFolderId');
+            if (hasil.sudahWebp) { totalDilewati++; galeriBaru.push(f); continue; }
             if (hasil.berhasil) {
-                const fileIdLama = p[pathKey];
-                await dbUpdate('produk', p.id, { [urlKey]: hasil.urlBaru, [pathKey]: hasil.fileIdBaru });
-                if (fileIdLama) await deleteFile(fileIdLama);
-                totalBerhasil++;
-                log('✓ Produk: ' + escapeHtml(p.nama_produk));
+                galeriBaru.push({ url: hasil.urlBaru, path: hasil.fileIdBaru });
+                if (f.path) hapusNanti.push(f.path);
+                konversiBerhasil++;
+            } else {
+                galeriBaru.push(f);
             }
+        }
+        if (!konversiBerhasil) continue;
+        // Simpan ke database DULU; file lama baru dihapus dari Drive setelah database berhasil diperbarui.
+        const upd = await dbUpdate('produk', p.id, {
+            foto_galeri: galeriBaru, foto_url: galeriBaru[0].url, foto_path: galeriBaru[0].path || '', foto_url2: null, foto_path2: null
+        });
+        if (upd.success) {
+            for (const id of hapusNanti) await deleteFile(id);
+            totalBerhasil += konversiBerhasil;
+            log('✓ Produk: ' + escapeHtml(p.nama_produk) + ' (' + konversiBerhasil + ' foto)');
+        } else {
+            for (const f of galeriBaru) { if (f.path && !galeri.some(function(x) { return x.path === f.path; })) await deleteFile(f.path); } // buang file baru yang batal dipakai
+            log('✗ Gagal menyimpan: ' + escapeHtml(p.nama_produk));
         }
     }
 
