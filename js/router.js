@@ -5,6 +5,7 @@
  */
 document.addEventListener('DOMContentLoaded', () => {
     initMode(); // pulihkan pilihan Ritel/Grosir terakhir & pasang warna temanya sebelum halaman pertama digambar
+    pantauTabelHp(); // tabel Admin otomatis jadi kartu bertumpuk di layar HP
     const safetyTimeout = setTimeout(() => {
         hideLoadingOverlay();
         showToast('Peringatan', 'Inisialisasi lambat/gagal. Cek koneksi atau buka Console (F12) untuk detail error.', 'warning');

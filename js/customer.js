@@ -382,17 +382,19 @@ function renderKatalogPage() {
 
     // Urutan kategori: Kuliner -> Pertanian -> Kerajinan. "Paket Promo" & "Sering Dipesan" hanya di mode ritel.
     const sektorList = [
-        { key: 'Semua', label: 'Semua Produk' },
-        { key: 'PortoRasa', label: 'PortoRasa (Kuliner)' },
-        { key: 'PortoTani', label: 'PortoTani (Pertanian)' },
-        { key: 'PortoKriya', label: 'PortoKriya (Kerajinan)' }
+        { key: 'Semua', label: 'Semua Produk', ikon: 'bi-grid-fill', warna: 'netral' },
+        { key: 'PortoRasa', label: 'PortoRasa (Kuliner)', ikon: 'bi-egg-fried', warna: 'rasa' },
+        { key: 'PortoTani', label: 'PortoTani (Pertanian)', ikon: 'bi-flower1', warna: 'tani' },
+        { key: 'PortoKriya', label: 'PortoKriya (Kerajinan)', ikon: 'bi-palette-fill', warna: 'kriya' }
     ];
     if (!b2b) {
-        sektorList.push({ key: 'PromoB2B', label: 'Paket Promo' });
-        sektorList.push({ key: 'SeringDipesan', label: 'Produk Sering Dipesan' });
+        sektorList.push({ key: 'PromoB2B', label: 'Paket Promo', ikon: 'bi-tags-fill', warna: 'promo' });
+        sektorList.push({ key: 'SeringDipesan', label: 'Produk Sering Dipesan', ikon: 'bi-fire', warna: 'sering' });
     }
+    // Ikon ada di kiri tulisan; tiap sektor punya warna sendiri (lihat .pu-chip-* di b2b-fitur.css)
     document.getElementById('katalogSektorChips').innerHTML = sektorList.map(function(s) {
-        return '<button class="chip chip-solid ' + (f.kategori === s.key ? 'active' : '') + '" onclick="setKatalogKategori(\'' + s.key + '\')">' + s.label + '</button>';
+        return '<button class="chip chip-solid pu-chip pu-chip-' + s.warna + ' ' + (f.kategori === s.key ? 'active' : '') +
+               '" onclick="setKatalogKategori(\'' + s.key + '\')"><i class="bi ' + s.ikon + '"></i><span>' + s.label + '</span></button>';
     }).join('');
 
     renderTagCepat();

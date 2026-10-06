@@ -158,3 +158,52 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Gagal', res.message, 'danger');
     });
 });
+
+/**
+ * ============================================================
+ * MODE HP: tabel Admin ditampilkan sebagai kartu bertumpuk
+ * ------------------------------------------------------------
+ * Di layar kecil, tabel lebar sulit dibaca. Fungsi ini menyalin judul
+ * kolom ke masing-masing sel (atribut data-label), lalu CSS menampilkan
+ * tiap baris sebagai kartu dengan label di kiri dan isinya di kanan.
+ * Dijalankan otomatis setiap kali isi halaman berubah, jadi tidak perlu
+ * dipanggil manual dari tiap halaman Admin.
+ * ============================================================
+ */
+function terapkanLabelTabelHp() {
+    document.querySelectorAll('table.data-table').forEach(function(tabel) {
+        const judul = Array.prototype.map.call(tabel.querySelectorAll('thead th'), function(th) {
+            return (th.textContent || '').trim();
+        });
+        if (!judul.length) return;
+        tabel.classList.add('pu-tabel-hp');
+        tabel.querySelectorAll('tbody tr').forEach(function(tr) {
+            const sel = tr.children;
+            // Baris pesan ("Belum ada data", "Memuat...") memakai colspan: biarkan apa adanya
+            if (sel.length === 1 && sel[0].getAttribute('colspan')) {
+                tr.classList.add('pu-tabel-hp-pesan');
+                return;
+            }
+            for (let i = 0; i < sel.length; i++) {
+                if (sel[i].hasAttribute('data-label')) continue;
+                sel[i].setAttribute('data-label', judul[i] || '');
+            }
+        });
+    });
+}
+/** Pantau perubahan isi halaman supaya label selalu menyesuaikan tabel terbaru. */
+function pantauTabelHp() {
+    const wadah = document.getElementById('app-container');
+    if (!wadah || typeof MutationObserver === 'undefined') return;
+    let tertunda = false;
+    const jalankan = function() {
+        tertunda = false;
+        try { terapkanLabelTabelHp(); } catch (e) { console.error('Gagal memberi label tabel:', e); }
+    };
+    new MutationObserver(function() {
+        if (tertunda) return;          // digabung sekali saja supaya tidak berulang-ulang
+        tertunda = true;
+        setTimeout(jalankan, 0);
+    }).observe(wadah, { childList: true, subtree: true });
+    jalankan();
+}

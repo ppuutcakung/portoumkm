@@ -194,3 +194,114 @@ body.admin-mode .pu-mode-strip { display: none; }
 .pu-paket { margin-top: 14px; border-radius: 10px; }
 .pu-paket.pu-invalid { outline: 2px solid #dc2626; outline-offset: 4px; }
 .pu-paket-menu { display: none; margin-top: 6px; font-size: 12px; color: var(--text-muted); background: var(--pu-tint); border-radius: 8px; padding: 6px 10px; }
+
+/* ============================================================
+   CHIP SEKTOR: ikon di kiri + warna khas tiap sektor
+   ============================================================ */
+.pu-chip { display: inline-flex; align-items: center; gap: 7px; }
+.pu-chip > i { font-size: 14px; line-height: 1; }
+/* Saat TIDAK aktif: latar putih, ikon berwarna khas sektornya */
+.pu-chip-rasa > i   { color: #7c4a21; }   /* Kuliner  - coklat */
+.pu-chip-tani > i   { color: #14532d; }   /* Pertanian - hijau tua */
+.pu-chip-kriya > i  { color: #9d174d; }   /* Kerajinan - pink tua */
+.pu-chip-promo > i  { color: #b45309; }
+.pu-chip-sering > i { color: #c2410c; }
+.pu-chip-netral > i { color: #475569; }
+/* Saat aktif: kotaknya ikut berwarna, tulisan & ikon putih */
+.chip.pu-chip-rasa.active   { background: #7c4a21; border-color: #7c4a21; color: #fff; }
+.chip.pu-chip-tani.active   { background: #14532d; border-color: #14532d; color: #fff; }
+.chip.pu-chip-kriya.active  { background: #9d174d; border-color: #9d174d; color: #fff; }
+.chip.pu-chip-promo.active  { background: #b45309; border-color: #b45309; color: #fff; }
+.chip.pu-chip-sering.active { background: #c2410c; border-color: #c2410c; color: #fff; }
+.chip.pu-chip-netral.active { background: #ffffff; border-color: #cbd5e1; color: #0f172a; }
+.chip.pu-chip.active > i { color: inherit; }
+/* Warna sektor menang atas tema B2B/B2C supaya tiap sektor tetap dikenali */
+body.pu-recolor:not(.admin-mode) .chip.pu-chip-rasa.active   { background: #7c4a21; border-color: #7c4a21; color: #fff; }
+body.pu-recolor:not(.admin-mode) .chip.pu-chip-tani.active   { background: #14532d; border-color: #14532d; color: #fff; }
+body.pu-recolor:not(.admin-mode) .chip.pu-chip-kriya.active  { background: #9d174d; border-color: #9d174d; color: #fff; }
+body.pu-recolor:not(.admin-mode) .chip.pu-chip-promo.active  { background: #b45309; border-color: #b45309; color: #fff; }
+body.pu-recolor:not(.admin-mode) .chip.pu-chip-sering.active { background: #c2410c; border-color: #c2410c; color: #fff; }
+body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffffff; border-color: #cbd5e1; color: #0f172a; }
+
+/* ============================================================
+   MODE HP (lebar layar <= 720px)
+   Hanya menata ulang komponen yang dibuat file ini; aturan lama
+   di css/style.css tidak diubah.
+   ============================================================ */
+@media (max-width: 720px) {
+    /* ---- chip & tag: bisa digeser mendatar, tidak menumpuk berantakan ---- */
+    #katalogSektorChips, #rfqJenisChips, #rfqFilterChips, #pesananModeChips, #pesananStatusChips {
+        flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px; scrollbar-width: none;
+    }
+    #katalogSektorChips::-webkit-scrollbar, #rfqJenisChips::-webkit-scrollbar, #rfqFilterChips::-webkit-scrollbar,
+    #pesananModeChips::-webkit-scrollbar, #pesananStatusChips::-webkit-scrollbar { display: none; }
+    #katalogSektorChips > .chip, #rfqJenisChips > .chip, #rfqFilterChips > .chip,
+    #pesananModeChips > .chip, #pesananStatusChips > .chip { flex: none; }
+    .pu-chip > span { white-space: nowrap; }
+
+    /* ---- popup detail produk ---- */
+    .modal-box.pu-detail-box { width: 100%; max-width: 100%; max-height: 100%; height: 100%; border-radius: 0; }
+    .pu-detail { padding: 16px; gap: 16px; }
+    .pu-detail-right { padding-right: 0; }
+    .pu-detail-title { font-size: 20px; }
+    .pu-detail-close { top: 10px; right: 10px; }
+    .pu-detail-meta { padding-right: 44px; }   /* beri ruang untuk tombol tutup */
+    .pu-gallery-main { aspect-ratio: 4 / 3; }
+    .pu-price { font-size: 22px; }
+    .pu-tier-table { font-size: 11px; }
+    .pu-tier-table th, .pu-tier-table td { padding-right: 4px; }
+    .pu-td-ket { display: none; }              /* kolom keterangan disembunyikan agar tabel muat */
+    .pu-tier-table th:nth-child(3) { display: none; }
+    .pu-calc-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .pu-qty { justify-content: space-between; }
+    .pu-qty input { flex: 1; width: auto; }
+    .pu-total-wrap { text-align: left; border-top: 1px dashed var(--pu-border-tint); padding-top: 8px; }
+    .pu-actions { flex-direction: column; }
+    .pu-actions > button { width: 100%; min-width: 0; }
+    .pu-actions > a.pu-wa { width: 100%; }
+
+    /* ---- kartu produk: tombol tetap terbaca ---- */
+    .pu-card-actions { flex-direction: column; gap: 6px; }
+    .pu-card-actions > button { width: 100%; }
+    .pu-b2b-row { font-size: 11px; }
+    .pu-tiered-tag { margin-left: 0; }
+
+    /* ---- banner & widget ---- */
+    .pu-b2b-banner { padding: 12px; }
+    .pu-b2b-banner > button { width: 100%; }
+    .pu-stat { padding: 10px 12px; }
+    .pu-stat-nilai { font-size: 16px; }
+
+    /* ---- form di dalam popup: dua kolom jadi satu kolom ---- */
+    #previewModalContent .grid.grid-cols-2 { grid-template-columns: 1fr; }
+    .pf-cert-row { grid-template-columns: 1fr; gap: 4px; }
+    .pf-tier-row { grid-template-columns: 1fr 1fr 34px; }
+    .pf-tier-row .pf-tier-ket { grid-column: 1 / -1; }
+    .pf-foto-item { width: 72px; height: 72px; }
+
+    /* ---- TABEL ADMIN: berubah jadi kartu bertumpuk ----
+       Label tiap baris diambil dari judul kolom oleh terapkanLabelTabelHp(). */
+    .data-table.pu-tabel-hp thead { display: none; }
+    .data-table.pu-tabel-hp, .data-table.pu-tabel-hp tbody, .data-table.pu-tabel-hp tr, .data-table.pu-tabel-hp td { display: block; width: 100%; }
+    .data-table.pu-tabel-hp tr {
+        border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px;
+        margin-bottom: 10px; background: #fff;
+    }
+    .data-table.pu-tabel-hp td {
+        display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+        border: 0; border-bottom: 1px dashed #eef2f7; padding: 6px 0; text-align: right;
+        white-space: normal !important; max-width: none !important;
+    }
+    .data-table.pu-tabel-hp td:last-child { border-bottom: 0; justify-content: flex-end; padding-top: 10px; }
+    .data-table.pu-tabel-hp td::before {
+        content: attr(data-label); flex: none; text-align: left; max-width: 42%;
+        font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .02em;
+    }
+    .data-table.pu-tabel-hp td[data-label=""]::before { display: none; }
+    .data-table.pu-tabel-hp td > * { margin-left: auto; }
+    .data-table.pu-tabel-hp td img { margin-left: auto; }
+    .data-table.pu-tabel-hp .form-select { width: auto; max-width: 60%; }
+    .data-table.pu-tabel-hp tr:first-child td:first-child { padding-top: 0; }
+    .table-wrap:has(.pu-tabel-hp) { overflow-x: visible; }
+}
