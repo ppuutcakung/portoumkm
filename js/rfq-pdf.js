@@ -252,8 +252,9 @@ function susunDokumenInvoice(p) {
     const jumlahItem = items.reduce(function(a, b) { return a + b.nilai; }, 0);
     const total = (p.total_estimasi !== null && p.total_estimasi !== undefined && p.total_estimasi !== '') ? Number(p.total_estimasi) : jumlahItem;
     const pemesan = [];
-    if (b2b) pemesan.push(['Nama Perusahaan', p.nama_perusahaan || '-']);
-    pemesan.push([b2b ? 'PIC / Pemesan' : 'Nama Pemesan', p.nama_pemesan || '-']);
+    // Nama perusahaan dicetak bila ada; pada pesanan Ritel kolom ini boleh kosong.
+    if (b2b || p.nama_perusahaan) pemesan.push(['Nama Perusahaan', p.nama_perusahaan || '-']);
+    pemesan.push(['PIC / Pemesan', p.nama_pemesan || '-']);
     pemesan.push(['Nomor WhatsApp / HP', p.no_hp || '-']);
     pemesan.push(['Alamat Penerima', p.alamat_kirim || '-']);
     return {

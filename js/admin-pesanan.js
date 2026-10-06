@@ -113,7 +113,7 @@ function renderPesananTabel() {
         const ringkasItem = its.slice(0, 2).map(function(i) {
             return escapeHtml(i.nama_produk + (i.warna ? ' [' + i.warna + ']' : '') + ' x' + i.qty + (i.satuan || ''));
         }).join('<br>') + (its.length > 2 ? ('<div class="text-xs" style="color:var(--text-muted)">+' + (its.length - 2) + ' item lain</div>') : '');
-        const pemesan = (mode === 'b2b' && p.nama_perusahaan)
+        const pemesan = p.nama_perusahaan
             ? '<div class="font-semibold" style="color:var(--text-primary)">' + escapeHtml(p.nama_perusahaan) + '</div><div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(p.nama_pemesan) + ' &middot; ' + escapeHtml(p.no_hp || '') + '</div>'
             : '<div class="font-semibold" style="color:var(--text-primary)">' + escapeHtml(p.nama_pemesan) + '</div><div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(p.no_hp || '') + '</div>';
         return [
@@ -252,8 +252,8 @@ function lihatPesananAdmin(id) {
         baris('No. Pesanan', p.nomor) +
         baris('Jalur', labelModePesanan(mode)) +
         baris('Tanggal pesan', tanggalIndo(p.created_at)) +
-        (mode === 'b2b' ? baris('Nama Perusahaan', p.nama_perusahaan) : '') +
-        baris(mode === 'b2b' ? 'PIC / Pemesan' : 'Nama Pemesan', p.nama_pemesan) +
+        ((mode === 'b2b' || p.nama_perusahaan) ? baris('Nama Perusahaan', p.nama_perusahaan) : '') +
+        baris('PIC / Pemesan', p.nama_pemesan) +
         baris('WhatsApp/HP', p.no_hp) +
         baris('Alamat Penerima', p.alamat_kirim) +
         baris('Tanggal dikirim', tanggalKirimSederhana(p.tanggal_kirim)) +

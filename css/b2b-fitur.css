@@ -229,6 +229,10 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
    di css/style.css tidak diubah.
    ============================================================ */
 @media (max-width: 720px) {
+    /* ---- judul hero: dipaksa satu baris; ukurannya dikecilkan oleh muatkanJudulHero() ---- */
+    .hero-title { white-space: nowrap; }
+    .hero-title > span { white-space: nowrap; }
+
     /* ---- chip & tag: bisa digeser mendatar, tidak menumpuk berantakan ---- */
     #katalogSektorChips, #rfqJenisChips, #rfqFilterChips, #pesananModeChips, #pesananStatusChips {
         flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
@@ -254,16 +258,20 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
     .pu-td-ket { display: none; }              /* kolom keterangan disembunyikan agar tabel muat */
     .pu-tier-table th:nth-child(3) { display: none; }
     .pu-calc-row { flex-direction: column; align-items: stretch; gap: 10px; }
-    .pu-qty { justify-content: space-between; }
-    .pu-qty input { flex: 1; width: auto; }
+    /* Kotak jumlah mengikuti lebar kartu, tidak meluber keluar */
+    .pu-qty { display: flex; width: 100%; box-sizing: border-box; max-width: 100%; }
+    .pu-qty button { flex: none; padding: 8px 9px; }
+    .pu-qty input { flex: 1 1 auto; width: auto; min-width: 0; }
     .pu-total-wrap { text-align: left; border-top: 1px dashed var(--pu-border-tint); padding-top: 8px; }
-    .pu-actions { flex-direction: column; }
-    .pu-actions > button { width: 100%; min-width: 0; }
-    .pu-actions > a.pu-wa { width: 100%; }
+    /* Tombol WhatsApp dan tombol pesan tetap BERDAMPINGAN, tidak menumpuk */
+    .pu-actions { flex-direction: row; flex-wrap: wrap; }
+    .pu-actions > button { flex: 1 1 140px; width: auto; min-width: 0; }
+    .pu-actions > a.pu-wa { width: 44px; flex: none; }
 
     /* ---- kartu produk: tombol tetap terbaca ---- */
-    .pu-card-actions { flex-direction: column; gap: 6px; }
-    .pu-card-actions > button { width: 100%; }
+    /* Tombol di kartu produk juga berdampingan */
+    .pu-card-actions { flex-direction: row; gap: 6px; }
+    .pu-card-actions > button { flex: 1 1 0; width: auto; min-width: 0; padding-left: 6px; padding-right: 6px; font-size: 11px; }
     .pu-b2b-row { font-size: 11px; }
     .pu-tiered-tag { margin-left: 0; }
 

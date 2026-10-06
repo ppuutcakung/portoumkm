@@ -1,4 +1,36 @@
 /**
+ * Judul hero dijaga agar MUAT SATU BARIS di layar HP (tidak terpotong ke baris
+ * baru). Ukuran hurufnya dikecilkan bertahap sampai pas, jadi tetap aman berapa
+ * pun panjang judul yang Admin tulis di Pengaturan. Di layar lebar, ukurannya
+ * dikembalikan ke bawaan css/style.css.
+ */
+const JUDUL_HERO_MIN_PX = 11;
+function muatkanJudulHero() {
+    const el = document.querySelector('.hero-title');
+    if (!el) return;
+    el.style.fontSize = '';                       // kembalikan ke ukuran bawaan dulu
+    if (!window.matchMedia || !window.matchMedia('(max-width: 720px)').matches) return;
+    const tersedia = el.clientWidth;
+    if (!tersedia) return;
+    let ukuran = parseFloat(window.getComputedStyle(el).fontSize) || 24;
+    let putaran = 0;
+    while (el.scrollWidth > tersedia && ukuran > JUDUL_HERO_MIN_PX && putaran++ < 60) {
+        ukuran -= 1;
+        el.style.fontSize = ukuran + 'px';
+    }
+}
+/** Ukur ulang saat layar diputar atau jendela diubah ukurannya. */
+function pantauJudulHero() {
+    let tunda = null;
+    const ukurUlang = function() {
+        clearTimeout(tunda);
+        tunda = setTimeout(muatkanJudulHero, 150);
+    };
+    window.addEventListener('resize', ukurUlang);
+    window.addEventListener('orientationchange', ukurUlang);
+}
+
+/**
  * ============================================================
  * PortoUMKM - Halaman Customer: Beranda, Semua Produk,
  * Detail Produk, Mitra Pemasaran
@@ -55,6 +87,7 @@ function renderHomePage() {
 
     const bw = document.getElementById('b2bBannerWrap');
     if (bw && isB2B()) bw.innerHTML = bannerB2bHtml();
+    muatkanJudulHero();
     loadHomePageDataGabungan();
     const brosurBtn = document.getElementById('brosurPdfBtn');
     if (brosurBtn && AppState.config.brosurPdfUrl) brosurBtn.style.display = 'inline-flex';
