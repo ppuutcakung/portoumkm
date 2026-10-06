@@ -257,9 +257,9 @@ function susunDokumenInvoice(p) {
     pemesan.push(['Nomor WhatsApp / HP', p.no_hp || '-']);
     pemesan.push(['Alamat Penerima', p.alamat_kirim || '-']);
     return {
-        judul: 'INVOICE PESANAN',
+        judul: 'DETAIL PESANAN',
         nomor: nomor,
-        namaFile: 'Invoice-' + nomor.replace(/[^A-Za-z0-9_-]/g, '') + '.pdf',
+        namaFile: 'Detail-Pesanan-' + nomor.replace(/[^A-Za-z0-9_-]/g, '') + '.pdf',
         tanggal: tanggalIndo(p.created_at),
         jenis: b2b ? 'B2B Grosir' : 'B2C Ritel',
         status: p.status_bayar || 'Belum Bayar',
@@ -414,7 +414,7 @@ function gambarDokumenInvoice(pdf, doc, opsi) {
         pdf.warnaGaris(GARIS); pdf.tebalGaris(0.3); pdf.garis(M, pdf.tinggi - 17, M + CW, pdf.tinggi - 17);
         pdf.font('normal', 7); pdf.warnaTeks(REDUP);
         pdf.teks('Dokumen dibuat otomatis oleh sistem ' + namaApp + '. Total bersifat estimasi; ongkos kirim dan penyesuaian lain dikonfirmasi Admin.', M, pdf.tinggi - 12.5);
-        pdf.teks('Simpan dokumen ini sebagai bukti pesanan Anda.', M, pdf.tinggi - 9);
+        pdf.teks('Dokumen ini adalah rincian pesanan, BUKAN invoice resmi. Invoice resmi diterbitkan langsung oleh UMKM produsen.', M, pdf.tinggi - 9);
         pdf.font('bold', 7.5); pdf.warnaTeks(GELAP); teksKanan('Halaman ' + i + ' / ' + n, M + CW, pdf.tinggi - 12.5);
     }
 }
@@ -536,7 +536,7 @@ async function unduhInvoicePesanan(p) {
             namaApp: (AppState.config || {}).appName || 'PortoUMKM'
         });
         pdf.simpan(doc.namaFile);
-        showToast('Berhasil', 'Invoice ' + doc.nomor + ' diunduh.', 'success');
+        showToast('Berhasil', 'Detail Pesanan ' + doc.nomor + ' diunduh.', 'success');
     } catch (e) {
         console.error('unduhInvoicePesanan gagal:', e);
         showToast('Gagal membuat PDF', e && e.message ? e.message : String(e), 'danger');

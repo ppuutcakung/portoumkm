@@ -36,4 +36,4 @@ function simpanKeCache(key, data) {
 const KATEGORI_LABEL = { PortoRasa: 'PortoRasa (Kuliner)', PortoKriya: 'PortoKriya (Kerajinan)', PortoTani: 'PortoTani (Pertanian)' };
 
 const PUBLIC_PAGES = ['home', 'katalog', 'mitra', 'keranjang', 'adminLogin'];
-const ADMIN_PAGES = ['adminDashboard', 'adminProduk', 'adminHero', 'adminFlyer', 'adminMitra', 'adminUmkm', 'adminPesanan', 'adminPembayaran', 'adminRfq', 'adminSettings'];
+const ADMIN_PAGES = ['adminDashboard', 'adminProduk', 'adminHero', 'adminFlyer', 'adminMitra', 'adminUmkm', 'adminPesanan', 'adminRfq', 'adminSettings'];

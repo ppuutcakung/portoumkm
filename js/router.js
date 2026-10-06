@@ -123,7 +123,6 @@ function navigateTo(pageName, options) {
         adminMitra: renderAdminMitraPage,
         adminUmkm: renderAdminUmkmPage,
         adminPesanan: renderAdminPesananPage,
-        adminPembayaran: renderAdminPembayaranPage,
         adminRfq: renderAdminRfqPage,
         adminSettings: renderAdminSettingsPage
     };
