@@ -10,8 +10,12 @@ function muatkanJudulHero() {
     if (!el) return;
     el.style.fontSize = '';                       // kembalikan ke ukuran bawaan dulu
     if (!window.matchMedia || !window.matchMedia('(max-width: 720px)').matches) return;
-    const tersedia = el.clientWidth;
-    if (!tersedia) return;
+    // Lebar acuan diambil dari yang TERKECIL antara elemen, pembungkusnya, dan layar.
+    // Elemen ber-nowrap bisa ikut melebar, jadi lebarnya sendiri tidak bisa dipercaya.
+    const kandidat = [el.clientWidth, el.parentElement ? el.parentElement.clientWidth : 0, window.innerWidth - 32]
+        .filter(function(x) { return x > 0; });
+    if (!kandidat.length) return;
+    const tersedia = Math.min.apply(null, kandidat);
     let ukuran = parseFloat(window.getComputedStyle(el).fontSize) || 24;
     let putaran = 0;
     while (el.scrollWidth > tersedia && ukuran > JUDUL_HERO_MIN_PX && putaran++ < 60) {
@@ -266,12 +270,18 @@ function hargaGrosirKartuHtml(p) {
     const baris2 = '<span class="pu-b2b-lbl">MOQ Grosir:</span><b>' + moq + ' ' + escapeHtml(satuan) + '</b>' + (min != null ? '<span class="pu-tiered-tag">Tiered Price</span>' : '');
     return '<div class="pu-b2b-box"><div class="pu-b2b-row">' + baris1 + '</div><div class="pu-b2b-row">' + baris2 + '</div></div>';
 }
+/** Teks tombol: versi panjang untuk layar lebar, versi pendek supaya muat di kartu HP. */
+function labelDua(ikon, panjang, pendek) {
+    return '<i class="bi ' + ikon + '"></i> <span class="pu-t-long">' + panjang + '</span><span class="pu-t-short">' + pendek + '</span>';
+}
 function labelAksiKartu(p) {
-    if (isB2B()) return bolehPesanLangsungB2b(p) ? '<i class="bi bi-cart-plus"></i> Pesan Langsung' : '<i class="bi bi-file-earmark-text"></i> RFQ B2B';
-    if (daftarWarna(p).length) return '<i class="bi bi-palette"></i> Pilih Warna';
-    if (p.tipe_pemesanan === 'Paket') return '<i class="bi bi-list-check"></i> Pilih Paket';
-    if (p.tipe_pemesanan === 'Custom') return '<i class="bi bi-pencil-square"></i> Pesan Custom';
-    return '<i class="bi bi-cart-plus"></i> Keranjang';
+    if (isB2B()) return bolehPesanLangsungB2b(p)
+        ? labelDua('bi-cart-plus', 'Pesan Langsung', 'Pesan')
+        : labelDua('bi-file-earmark-text', 'RFQ B2B', 'RFQ');
+    if (daftarWarna(p).length) return labelDua('bi-palette', 'Pilih Warna', 'Warna');
+    if (p.tipe_pemesanan === 'Paket') return labelDua('bi-list-check', 'Pilih Paket', 'Paket');
+    if (p.tipe_pemesanan === 'Custom') return labelDua('bi-pencil-square', 'Pesan Custom', 'Custom');
+    return labelDua('bi-cart-plus', 'Keranjang', 'Beli');
 }
 /**
  * Kartu produk. SEMUA tombol hanya membawa ID produk (bukan nama/deskripsi),
@@ -320,7 +330,7 @@ function productCardHtml(p) {
       cert ? ('<div class="pu-cert-wrap pu-cert-card">' + cert + '</div>') : '',
       '</div>',
       '<div class="product-card-footer pu-card-actions" onclick="event.stopPropagation()">',
-      '<button type="button" class="btn-ghost" onclick="bukaDetailProduk(\'' + id + '\')"><i class="bi bi-eye"></i> Detail</button>',
+      '<button type="button" class="btn-ghost" onclick="bukaDetailProduk(\'' + id + '\')">' + labelDua('bi-eye', 'Detail', 'Detail') + '</button>',
       '<button type="button" class="btn-primary" onclick="aksiUtamaKartu(\'' + id + '\')">' + labelAksiKartu(p) + '</button>',
       '</div>',
       '</div>'

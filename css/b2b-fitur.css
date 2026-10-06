@@ -175,6 +175,10 @@ body.admin-mode .pu-mode-strip { display: none; }
 .pf-badge-b2c { background: #e2e8f0; color: #334155; }
 .pf-badge-b2b { background: #e0f2fe; color: #075985; }
 
+/* Label tombol: versi panjang untuk layar lebar, versi pendek untuk HP */
+.pu-t-long { display: inline; }
+.pu-t-short { display: none; }
+
 /* ---------- TAG CEPAT (otomatis dari sub-kategori) ---------- */
 .tag-quick.active { background: var(--pu-accent, var(--primary)); border-color: var(--pu-accent, var(--primary)); color: var(--pu-on, #fff); }
 .tag-quick .tag-quick-n { opacity: .65; font-size: 10px; margin-left: 2px; }
@@ -229,9 +233,22 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
    di css/style.css tidak diubah.
    ============================================================ */
 @media (max-width: 720px) {
-    /* ---- judul hero: dipaksa satu baris; ukurannya dikecilkan oleh muatkanJudulHero() ---- */
-    .hero-title { white-space: nowrap; }
+    /* ---- pengaman: halaman tidak boleh bisa digeser ke samping ---- */
+    html, body { max-width: 100%; overflow-x: hidden; }
+
+    /* ---- judul hero: satu baris, ukurannya dikecilkan oleh muatkanJudulHero() ----
+       .page-wrap di hero memakai display:grid. Anak grid bawaannya min-width:auto,
+       sehingga kolomnya ikut MELEBAR mengikuti teks yang nowrap dan halaman jadi
+       lebih lebar dari layar. min-width:0 mengunci lebarnya ke lebar layar. */
+    .hero-section .page-wrap, .hero-section .page-wrap > * { min-width: 0; }
+    .hero-title { white-space: nowrap; overflow: hidden; max-width: 100%; }
     .hero-title > span { white-space: nowrap; }
+    .hero-section p, .hero-section .pill-feature { max-width: 100%; }
+
+    /* ---- tombol kartu produk: teks pendek & tidak pernah melewati kotak ---- */
+    .pu-card-actions > button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pu-t-long { display: none; }
+    .pu-t-short { display: inline; }
 
     /* ---- chip & tag: bisa digeser mendatar, tidak menumpuk berantakan ---- */
     #katalogSektorChips, #rfqJenisChips, #rfqFilterChips, #pesananModeChips, #pesananStatusChips {
