@@ -3,6 +3,55 @@
  * PortoUMKM - Admin: Pengaturan WhatsApp & Sistem
  * ============================================================
  */
+/** Warna bawaan Ritel = warna asli aplikasi (dibaca dari tema); warna bawaan Grosir = biru muda. */
+function warnaBawaanRitel() {
+    try {
+        const v = normalisasiHex(getComputedStyle(document.documentElement).getPropertyValue('--primary'));
+        if (v) return v;
+    } catch (err) { /* abaikan, pakai cadangan */ }
+    return '#8c2f3a';
+}
+function warnaEfektifPengaturan(mode, nilaiValid) {
+    if (nilaiValid) return nilaiValid;
+    return mode === 'b2b' ? '#0284c7' : warnaBawaanRitel();
+}
+function idBarisWarna(mode) { return mode === 'b2c' ? 'B2c' : 'B2b'; }
+function htmlBarisWarna(mode, label, nilai) {
+    const id = idBarisWarna(mode);
+    const ok = normalisasiHex(nilai);
+    return '<div class="form-group"><label class="form-label">' + label + '</label>' +
+        '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+        '<input type="color" id="sfWarna' + id + 'Pick" value="' + warnaEfektifPengaturan(mode, ok) + '" oninput="onWarnaPicker(\'' + mode + '\', this.value)" style="width:44px; height:38px; padding:2px; border:1px solid var(--border-color); border-radius:8px; background:#fff; cursor:pointer;">' +
+        '<input class="form-input" id="sfWarna' + id + '" maxlength="7" placeholder="Default" value="' + escapeAttr(ok) + '" oninput="onWarnaTeks(\'' + mode + '\', this.value)" style="width:120px;">' +
+        '<button type="button" class="btn-ghost" onclick="resetWarnaTema(\'' + mode + '\')">Default</button>' +
+        '<div id="sfWarna' + id + 'Preview" style="display:flex; gap:6px; align-items:center;"></div>' +
+        '</div></div>';
+}
+function perbaruiPratinjauWarna(mode) {
+    const id = idBarisWarna(mode);
+    const el = document.getElementById('sfWarna' + id + 'Preview');
+    const txt = document.getElementById('sfWarna' + id);
+    if (!el || !txt) return;
+    const p = turunkanPaletWarna(warnaEfektifPengaturan(mode, normalisasiHex(txt.value)));
+    el.innerHTML = '<span style="background:' + p.main + '; color:' + p.on + '; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700;">Tombol</span>' +
+        '<span style="background:' + p.tint + '; border:1px solid ' + p.border + '; color:' + p.main + '; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:700;">Latar &amp; garis</span>';
+}
+function onWarnaPicker(mode, v) {
+    document.getElementById('sfWarna' + idBarisWarna(mode)).value = normalisasiHex(v);
+    perbaruiPratinjauWarna(mode);
+}
+function onWarnaTeks(mode, v) {
+    const h = normalisasiHex(v);
+    if (h) document.getElementById('sfWarna' + idBarisWarna(mode) + 'Pick').value = h;
+    perbaruiPratinjauWarna(mode);
+}
+function resetWarnaTema(mode) {
+    const id = idBarisWarna(mode);
+    document.getElementById('sfWarna' + id).value = '';
+    document.getElementById('sfWarna' + id + 'Pick').value = warnaEfektifPengaturan(mode, '');
+    perbaruiPratinjauWarna(mode);
+}
+
 function renderAdminSettingsPage() {
     const container = document.getElementById('app-container');
     const c = AppState.config;
@@ -39,28 +88,10 @@ function renderAdminSettingsPage() {
       '<input type="hidden" id="sfLogoPath" value="', c.logoPath || '', '">',
       '</div>',
       '<hr style="border-color:var(--border-color); margin:18px 0;">',
-      '<p class="text-xs font-bold uppercase mb-2" style="color:var(--text-muted)">3 Klaster Produk UMKM (tampil di Beranda)</p>',
-      '<div class="card p-3 mb-3" style="border-color:var(--border-color);">',
-      '<p class="text-xs font-bold mb-2" style="color:var(--primary);">PortoRasa (Kuliner)</p>',
-      '<div class="form-group"><label class="form-label">Gambar</label><input class="form-input" type="file" id="sfImgRasa" accept="image/*">', imgPreview(c.sectorImgPortoRasa, 'sfImgRasaUrl'), '<input type="hidden" id="sfImgRasaUrl" value="', c.sectorImgPortoRasa || '', '"><input type="hidden" id="sfImgRasaPath" value="', c.sectorImgPortoRasaPath || '', '"></div>',
-      '<div class="form-group"><label class="form-label">Judul</label><input class="form-input" id="sfTitleRasa" value="', escapeHtml(c.sectorTitlePortoRasa || 'Kuliner & Katering Nusantara'), '"></div>',
-      '<div class="form-group"><label class="form-label">Deskripsi</label><textarea class="form-textarea" id="sfDescRasa">', escapeHtml(c.sectorDescPortoRasa || 'Snack box rapat, nasi box tradisional, sambal, dan bumbu kopi khas Cakung.'), '</textarea></div>',
-      '<div class="form-group"><label class="form-label">Tag (pisahkan dengan koma)</label><input class="form-input" id="sfTagsRasa" value="', escapeHtml(c.sectorTagsPortoRasa || 'Snack Rapat,Nasi Box,Frozen Food'), '"></div>',
-      '</div>',
-      '<div class="card p-3 mb-3" style="border-color:var(--border-color);">',
-      '<p class="text-xs font-bold mb-2" style="color:var(--primary);">PortoKriya (Kerajinan)</p>',
-      '<div class="form-group"><label class="form-label">Gambar</label><input class="form-input" type="file" id="sfImgKriya" accept="image/*">', imgPreview(c.sectorImgPortoKriya, 'sfImgKriyaUrl'), '<input type="hidden" id="sfImgKriyaUrl" value="', c.sectorImgPortoKriya || '', '"><input type="hidden" id="sfImgKriyaPath" value="', c.sectorImgPortoKriyaPath || '', '"></div>',
-      '<div class="form-group"><label class="form-label">Judul</label><input class="form-input" id="sfTitleKriya" value="', escapeHtml(c.sectorTitlePortoKriya || 'Kerajinan & Souvenir Custom'), '"></div>',
-      '<div class="form-group"><label class="form-label">Deskripsi</label><textarea class="form-textarea" id="sfDescKriya">', escapeHtml(c.sectorDescPortoKriya || 'Tas anyaman ramah lingkungan, gantungan kunci akrilik, plakat, dan pouch tenun.'), '</textarea></div>',
-      '<div class="form-group"><label class="form-label">Tag (pisahkan dengan koma)</label><input class="form-input" id="sfTagsKriya" value="', escapeHtml(c.sectorTagsPortoKriya || 'Hampers Event,Tas Anyaman,Merchandise'), '"></div>',
-      '</div>',
-      '<div class="card p-3 mb-3" style="border-color:var(--border-color);">',
-      '<p class="text-xs font-bold mb-2" style="color:var(--primary);">PortoTani (Pertanian)</p>',
-      '<div class="form-group"><label class="form-label">Gambar</label><input class="form-input" type="file" id="sfImgTani" accept="image/*">', imgPreview(c.sectorImgPortoTani, 'sfImgTaniUrl'), '<input type="hidden" id="sfImgTaniUrl" value="', c.sectorImgPortoTani || '', '"><input type="hidden" id="sfImgTaniPath" value="', c.sectorImgPortoTaniPath || '', '"></div>',
-      '<div class="form-group"><label class="form-label">Judul</label><input class="form-input" id="sfTitleTani" value="', escapeHtml(c.sectorTitlePortoTani || 'Urban Farming & Hasil Tani'), '"></div>',
-      '<div class="form-group"><label class="form-label">Deskripsi</label><textarea class="form-textarea" id="sfDescTani">', escapeHtml(c.sectorDescPortoTani || 'Sayuran hidroponik bebas pestisida, madu murni, dan hasil kebun pekarangan.'), '</textarea></div>',
-      '<div class="form-group"><label class="form-label">Tag (pisahkan dengan koma)</label><input class="form-input" id="sfTagsTani" value="', escapeHtml(c.sectorTagsPortoTani || 'Hidroponik Fresh,Madu Murni,Bibit Unggul'), '"></div>',
-      '</div>',
+      '<p class="text-xs font-bold uppercase mb-2" style="color:var(--text-muted)">Warna Tampilan Etalase</p>',
+      '<p class="text-xs mb-3" style="color:var(--text-muted)">Warna utama yang dilihat customer di mode B2C Ritel dan B2B Grosir. Klik tombol Default untuk memakai warna bawaan: Ritel memakai warna asli aplikasi, Grosir memakai biru muda.</p>',
+      htmlBarisWarna('b2c', 'B2C Ritel', c.warnaB2c),
+      htmlBarisWarna('b2b', 'B2B Grosir', c.warnaB2b),
       '<hr style="border-color:var(--border-color); margin:18px 0;">',
       '<p class="text-xs font-bold uppercase mb-2" style="color:var(--text-muted)">Brosur &amp; Tag Cepat</p>',
       '<div class="form-group">',
@@ -99,11 +130,13 @@ function renderAdminSettingsPage() {
       '<div id="konversiWebpProgress" class="text-xs mt-2" style="color:var(--text-muted)"></div>',
       '</div>'
     ].join(''));
+    perbaruiPratinjauWarna('b2c');
+    perbaruiPratinjauWarna('b2b');
 }
 
 /**
  * Konversi SEKALI JALAN semua foto lama (Produk, Hero, Flyer, Mitra, Logo,
- * Gambar Sektor) yang belum berformat WebP. Untuk tiap foto: diunduh,
+ * Logo) yang belum berformat WebP. Untuk tiap foto: diunduh,
  * dikonversi lewat Canvas, diunggah ulang sebagai .webp, record di database
  * diperbarui ke URL baru, lalu file LAMA dihapus dari Drive.
  */
@@ -217,13 +250,10 @@ async function konversiSemuaFotoLama() {
         }
     }
 
-    // --- Logo & Gambar Sektor (tersimpan di app_config) ---
+    // --- Logo (tersimpan di app_config) ---
     const cfg = AppState.config;
     const configImagePairs = [
-        ['logoUrl', 'logoPath', 'logoFolderId'],
-        ['sectorImgPortoRasa', 'sectorImgPortoRasaPath', 'uploadFolderId'],
-        ['sectorImgPortoKriya', 'sectorImgPortoKriyaPath', 'uploadFolderId'],
-        ['sectorImgPortoTani', 'sectorImgPortoTaniPath', 'uploadFolderId']
+        ['logoUrl', 'logoPath', 'logoFolderId']
     ];
     const configUpdates = {};
     for (const [urlKey, pathKey, folderKey] of configImagePairs) {
@@ -269,27 +299,20 @@ function hapusFilePengaturan(hiddenId, wrapId) {
 
 function submitSettingsForm(e) {
     e.preventDefault();
+    const teksWarnaB2c = document.getElementById('sfWarnaB2c').value.trim();
+    const teksWarnaB2b = document.getElementById('sfWarnaB2b').value.trim();
+    if ((teksWarnaB2c && !normalisasiHex(teksWarnaB2c)) || (teksWarnaB2b && !normalisasiHex(teksWarnaB2b))) {
+        showToast('Peringatan', 'Warna harus berformat #RRGGBB (contoh: #0284c7). Kosongkan atau klik Default untuk warna bawaan.', 'warning');
+        return;
+    }
     const payload = {
+        warnaB2c: normalisasiHex(teksWarnaB2c),
+        warnaB2b: normalisasiHex(teksWarnaB2b),
         appName: document.getElementById('sfAppName').value.trim(),
         waAdminNumber: document.getElementById('sfWaNumber').value.replace(/[^0-9]/g, ''),
         emailKontak: document.getElementById('sfEmail').value.trim(),
         logoUrl: document.getElementById('sfLogoUrl').value,
         logoPath: document.getElementById('sfLogoPath').value,
-        sectorImgPortoRasa: document.getElementById('sfImgRasaUrl').value,
-        sectorImgPortoRasaPath: document.getElementById('sfImgRasaPath').value,
-        sectorImgPortoKriya: document.getElementById('sfImgKriyaUrl').value,
-        sectorImgPortoKriyaPath: document.getElementById('sfImgKriyaPath').value,
-        sectorImgPortoTani: document.getElementById('sfImgTaniUrl').value,
-        sectorImgPortoTaniPath: document.getElementById('sfImgTaniPath').value,
-        sectorTitlePortoRasa: document.getElementById('sfTitleRasa').value.trim(),
-        sectorDescPortoRasa: document.getElementById('sfDescRasa').value.trim(),
-        sectorTagsPortoRasa: document.getElementById('sfTagsRasa').value.trim(),
-        sectorTitlePortoKriya: document.getElementById('sfTitleKriya').value.trim(),
-        sectorDescPortoKriya: document.getElementById('sfDescKriya').value.trim(),
-        sectorTagsPortoKriya: document.getElementById('sfTagsKriya').value.trim(),
-        sectorTitlePortoTani: document.getElementById('sfTitleTani').value.trim(),
-        sectorDescPortoTani: document.getElementById('sfDescTani').value.trim(),
-        sectorTagsPortoTani: document.getElementById('sfTagsTani').value.trim(),
         brosurPdfUrl: document.getElementById('sfBrosurUrl').value,
         brosurPdfPath: document.getElementById('sfBrosurPath').value,
         tagCepatList: document.getElementById('sfTagCepat').value.trim(),
@@ -305,9 +328,6 @@ function submitSettingsForm(e) {
 
     const uploadQueue = [
         { inputId: 'sfLogo', folderKey: 'logoFolderId', urlKey: 'logoUrl', pathKey: 'logoPath' },
-        { inputId: 'sfImgRasa', folderKey: 'uploadFolderId', urlKey: 'sectorImgPortoRasa', pathKey: 'sectorImgPortoRasaPath' },
-        { inputId: 'sfImgKriya', folderKey: 'uploadFolderId', urlKey: 'sectorImgPortoKriya', pathKey: 'sectorImgPortoKriyaPath' },
-        { inputId: 'sfImgTani', folderKey: 'uploadFolderId', urlKey: 'sectorImgPortoTani', pathKey: 'sectorImgPortoTaniPath' },
         { inputId: 'sfBrosur', folderKey: 'brosurFolderId', urlKey: 'brosurPdfUrl', pathKey: 'brosurPdfPath' }
     ].filter(function(item) {
         const input = document.getElementById(item.inputId);

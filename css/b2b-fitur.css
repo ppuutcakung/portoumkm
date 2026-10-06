@@ -3,33 +3,47 @@
    popup Detail Produk, harga bertingkat, sertifikat, form Admin.
    Dimuat SETELAH css/style.css (file lama tidak diubah).
    ------------------------------------------------------------
-   Mengganti warna B2B: cari "#c2410c" (oranye utama) dan
-   "#9a3412" (oranye gelap saat disorot) lalu ganti di file ini.
-   Mode B2C memakai warna bawaan aplikasi (tidak diubah).
+   WARNA: diatur dari Admin > Pengaturan > "Warna Tampilan Etalase".
+   Nilai bawaan mode Grosir (biru muda) ada di variabel --pu-b2b-*
+   di bawah; mode Ritel memakai warna asli aplikasi bila Admin
+   tidak mengaturnya.
    ============================================================ */
 
-body { --pu-tint: #fbf1f2; --pu-border-tint: #ecd3d6; }
-
-/* ---------- TEMA MODE B2B (oranye) - tidak berlaku di halaman Admin ---------- */
-body[data-mode="b2b"]:not(.admin-mode) {
-    --primary: #c2410c;
-    --pu-tint: #fff7ed;
-    --pu-border-tint: #fed7aa;
+:root {
+    --pu-b2b-main: #0284c7;
+    --pu-b2b-dark: #0369a1;
+    --pu-b2b-tint: #f0f9ff;
+    --pu-b2b-border: #bae6fd;
+    --pu-b2b-on: #ffffff;
 }
-body[data-mode="b2b"]:not(.admin-mode) .btn-primary { background: #c2410c; border-color: #c2410c; color: #fff; }
-body[data-mode="b2b"]:not(.admin-mode) .btn-primary:hover { background: #9a3412; border-color: #9a3412; }
-body[data-mode="b2b"]:not(.admin-mode) .nav-link.active { background: #c2410c; color: #fff; }
-body[data-mode="b2b"]:not(.admin-mode) .chip.active,
-body[data-mode="b2b"]:not(.admin-mode) .chip-solid.active { background: #c2410c; border-color: #c2410c; color: #fff; }
-body[data-mode="b2b"]:not(.admin-mode) .page-btn.active { background: #c2410c; border-color: #c2410c; color: #fff; }
-body[data-mode="b2b"]:not(.admin-mode) .price-now { color: #c2410c; }
-body[data-mode="b2b"]:not(.admin-mode) .cart-badge { background: #c2410c; }
-body[data-mode="b2b"]:not(.admin-mode) .hero-badge { color: #c2410c; border-color: #fed7aa; background: #fff7ed; }
+/* Mode Ritel (bawaan): warna asli aplikasi */
+body { --pu-tint: #fbf1f2; --pu-border-tint: #ecd3d6; --pu-on: #ffffff; --pu-accent: var(--primary); --pu-accent-dark: var(--primary); }
+/* Mode Ritel dengan warna yang diatur Admin */
+body[data-mode="b2c"].pu-b2c-custom {
+    --pu-accent: var(--pu-b2c-main); --pu-accent-dark: var(--pu-b2c-dark);
+    --pu-tint: var(--pu-b2c-tint); --pu-border-tint: var(--pu-b2c-border); --pu-on: var(--pu-b2c-on);
+}
+/* Mode Grosir */
+body[data-mode="b2b"] {
+    --pu-accent: var(--pu-b2b-main); --pu-accent-dark: var(--pu-b2b-dark);
+    --pu-tint: var(--pu-b2b-tint); --pu-border-tint: var(--pu-b2b-border); --pu-on: var(--pu-b2b-on);
+}
+/* Warna diterapkan ke seluruh etalase (bukan halaman Admin) saat mode Grosir, atau Ritel yang diwarnai Admin */
+body.pu-recolor:not(.admin-mode) { --primary: var(--pu-accent); }
+body.pu-recolor:not(.admin-mode) .btn-primary { background: var(--pu-accent); border-color: var(--pu-accent); color: var(--pu-on); }
+body.pu-recolor:not(.admin-mode) .btn-primary:hover { background: var(--pu-accent-dark); border-color: var(--pu-accent-dark); }
+body.pu-recolor:not(.admin-mode) .nav-link.active { background: var(--pu-accent); color: var(--pu-on); }
+body.pu-recolor:not(.admin-mode) .chip.active,
+body.pu-recolor:not(.admin-mode) .chip-solid.active { background: var(--pu-accent); border-color: var(--pu-accent); color: var(--pu-on); }
+body.pu-recolor:not(.admin-mode) .page-btn.active { background: var(--pu-accent); border-color: var(--pu-accent); color: var(--pu-on); }
+body.pu-recolor:not(.admin-mode) .price-now { color: var(--pu-accent); }
+body.pu-recolor:not(.admin-mode) .cart-badge { background: var(--pu-accent); color: var(--pu-on); }
+body.pu-recolor:not(.admin-mode) .hero-badge { color: var(--pu-accent); border-color: var(--pu-border-tint); background: var(--pu-tint); }
 
 /* ---------- BAR MODE DI ATAS HEADER ---------- */
 .pu-mode-strip {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    background: var(--primary); color: #fff; font-size: 12px; line-height: 1.3; padding: 6px 16px;
+    background: var(--primary); color: var(--pu-on, #fff); font-size: 12px; line-height: 1.3; padding: 6px 16px;
 }
 .pu-mode-pill { background: rgba(255,255,255,.2); border-radius: 6px; padding: 2px 10px; font-weight: 800; letter-spacing: .03em; white-space: nowrap; }
 body.admin-mode .pu-mode-strip { display: none; }
@@ -37,7 +51,7 @@ body.admin-mode .pu-mode-strip { display: none; }
 /* ---------- TOMBOL PILIH MODE (B2C Ritel | B2B Grosir) ---------- */
 .pu-mode-toggle { display: inline-flex; align-items: center; gap: 2px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 999px; padding: 3px; flex-shrink: 0; }
 .pu-mode-btn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #475569; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
-.pu-mode-btn.active { background: var(--primary); color: #fff; }
+.pu-mode-btn.active { background: var(--primary); color: var(--pu-on, #fff); }
 .pu-lbl-short { display: none; }
 @media (max-width: 640px) {
     .pu-mode-btn { padding: 6px 9px; }
@@ -55,17 +69,17 @@ body.admin-mode .pu-mode-strip { display: none; }
 .pu-cert { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
 .pu-cert i { color: #16a34a; }
 .pu-cert-more { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
-.pu-b2b-box { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 10px; padding: 10px; margin-top: 8px; }
+.pu-b2b-box { background: var(--pu-tint); border: 1px solid var(--pu-border-tint); border-radius: 10px; padding: 10px; margin-top: 8px; }
 .pu-b2b-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; }
 .pu-b2b-row + .pu-b2b-row { margin-top: 6px; }
 .pu-b2b-lbl { color: #64748b; }
-.pu-b2b-price { color: #c2410c; font-weight: 800; }
+.pu-b2b-price { color: var(--pu-accent); font-weight: 800; }
 .pu-b2b-rfq { font-weight: 700; }
 .pu-tiered-tag { margin-left: auto; background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
 
 /* ---------- BANNER MODE B2B ---------- */
-.pu-b2b-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
-.pu-b2b-banner-ico { width: 44px; height: 44px; border-radius: 10px; background: #c2410c; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.pu-b2b-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--pu-tint); border: 1px solid var(--pu-border-tint); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+.pu-b2b-banner-ico { width: 44px; height: 44px; border-radius: 10px; background: var(--pu-accent); color: var(--pu-on); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
 .pu-b2b-banner-txt { flex: 1; min-width: 200px; font-size: 12px; color: #475569; }
 .pu-b2b-banner-title { font-size: 12px; font-weight: 800; color: #1e293b; margin-bottom: 2px; }
 
@@ -99,13 +113,13 @@ body.admin-mode .pu-mode-strip { display: none; }
 .pu-minorder { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
 .pu-tier-box { border: 1px solid var(--pu-border-tint); border-radius: 12px; padding: 12px; margin-top: 14px; background: #fff; }
 .pu-tier-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 12px; font-weight: 800; color: #1e293b; }
-.pu-tier-head i { color: #c2410c; }
+.pu-tier-head i { color: var(--pu-accent); }
 .pu-moq-badge { background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; }
 .pu-tier-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
 .pu-tier-table th { text-align: left; font-size: 10px; font-weight: 700; color: #64748b; letter-spacing: .03em; padding: 6px 8px 6px 0; border-bottom: 1px solid #e2e8f0; }
 .pu-tier-table td { padding: 8px 8px 8px 0; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
 .pu-td-harga { font-weight: 800; white-space: nowrap; }
-.pu-td-grosir { color: #c2410c; }
+.pu-td-grosir { color: var(--pu-accent); }
 .pu-td-ket { font-size: 11px; color: #64748b; }
 .pu-tier-table tr.aktif td { background: var(--pu-tint); }
 .pu-label { font-size: 11px; font-weight: 800; letter-spacing: .03em; color: #475569; text-transform: uppercase; margin-bottom: 6px; }
@@ -158,5 +172,5 @@ body.admin-mode .pu-mode-strip { display: none; }
 .pf-tier-row .form-input { height: 34px; padding: 4px 8px; font-size: 12px; }
 @media (max-width: 520px) { .pf-tier-row { grid-template-columns: 70px 1fr 34px; } .pf-tier-row .pf-tier-ket { grid-column: 1 / -1; } }
 .pf-badge-mode { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
-.pf-badge-b2c { background: #e0f2fe; color: #075985; }
-.pf-badge-b2b { background: #ffedd5; color: #9a3412; }
+.pf-badge-b2c { background: #e2e8f0; color: #334155; }
+.pf-badge-b2b { background: #e0f2fe; color: #075985; }

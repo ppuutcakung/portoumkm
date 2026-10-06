@@ -69,6 +69,7 @@ function applyConfig(config) {
         const q = document.getElementById('footerQuoteText');
         if (q) q.textContent = config.footerQuoteText;
     }
+    terapkanWarnaTema(); // warna Ritel/Grosir yang diatur Admin
 }
 
 /**

@@ -23,6 +23,8 @@ function initMode() {
 function terapkanTemaMode() {
     const b2b = isB2B();
     document.body.setAttribute('data-mode', b2b ? 'b2b' : 'b2c');
+    // Tema warna dipasang di mode Grosir, dan di mode Ritel HANYA bila Admin mengatur warna Ritel sendiri
+    document.body.classList.toggle('pu-recolor', b2b || document.body.classList.contains('pu-b2c-custom'));
     [['modeBtnB2c', !b2b], ['modeBtnB2b', b2b]].forEach(function(x) {
         const el = document.getElementById(x[0]);
         if (!el) return;
@@ -57,6 +59,54 @@ function paksaModeRitel() {
     if (!isB2B()) return;
     AppState.mode = 'b2c';
     simpanMode();
+    terapkanTemaMode();
+}
+
+// -------------------- TEMA WARNA (bisa diatur Admin) --------------------
+function normalisasiHex(h) {
+    let x = String(h == null ? '' : h).trim().toLowerCase();
+    if (/^#[0-9a-f]{3}$/.test(x)) x = '#' + x[1] + x[1] + x[2] + x[2] + x[3] + x[3];
+    return /^#[0-9a-f]{6}$/.test(x) ? x : '';
+}
+function hexKeRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function rgbKeHex(r, g, b) {
+    return '#' + [r, g, b].map(function(v) { return Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0'); }).join('');
+}
+/** Campur warna h ke arah target sebesar bagian (0..1). */
+function campurWarna(h, target, bagian) {
+    const a = hexKeRgb(h), b = hexKeRgb(target);
+    return rgbKeHex(a[0] + (b[0] - a[0]) * bagian, a[1] + (b[1] - a[1]) * bagian, a[2] + (b[2] - a[2]) * bagian);
+}
+function luminansiWarna(h) {
+    const c = hexKeRgb(h).map(function(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+/** Dari satu warna utama, turunkan warna sorot (gelap), latar muda, garis tepi, dan warna teks di atasnya. */
+function turunkanPaletWarna(h) {
+    return {
+        main: h,
+        dark: campurWarna(h, '#000000', 0.2),
+        tint: campurWarna(h, '#ffffff', 0.92),
+        border: campurWarna(h, '#ffffff', 0.72),
+        on: luminansiWarna(h) > 0.4 ? '#111827' : '#ffffff'
+    };
+}
+function cssPaletWarna(awalan, h) {
+    const p = turunkanPaletWarna(h);
+    return '--pu-' + awalan + '-main:' + p.main + ';--pu-' + awalan + '-dark:' + p.dark + ';--pu-' + awalan + '-tint:' + p.tint +
+           ';--pu-' + awalan + '-border:' + p.border + ';--pu-' + awalan + '-on:' + p.on + ';';
+}
+/**
+ * Pasang warna yang diatur Admin (app_config: warnaB2c, warnaB2b). Kosong = warna bawaan:
+ * Ritel memakai warna asli aplikasi, Grosir memakai biru muda.
+ */
+function terapkanWarnaTema() {
+    const c = AppState.config || {};
+    const b2b = normalisasiHex(c.warnaB2b), b2c = normalisasiHex(c.warnaB2c);
+    let el = document.getElementById('puThemeStyle');
+    if (!el) { el = document.createElement('style'); el.id = 'puThemeStyle'; document.head.appendChild(el); }
+    el.textContent = ':root{' + (b2b ? cssPaletWarna('b2b', b2b) : '') + (b2c ? cssPaletWarna('b2c', b2c) : '') + '}';
+    document.body.classList.toggle('pu-b2c-custom', !!b2c);
     terapkanTemaMode();
 }
 
@@ -383,12 +433,21 @@ function puMintaSampel() {
 }
 
 // ============================================================
-// RFQ B2B  (Request for Quotation)
-// Saat ini RFQ disimpan ke database dan dikirim ke Admin lewat WhatsApp.
-// Data nama_umkm ikut disimpan supaya kelak bisa diarahkan langsung ke UMKM.
+// RFQ B2B  (Request for Quotation) & PERMINTAAN SAMPEL
+// Disimpan ke database (tabel rfq) dan dikirim ke Admin lewat WhatsApp; Admin
+// mengunduh dokumen PDF terstandar dari menu RFQ. Nama UMKM ikut disimpan
+// supaya kelak bisa diarahkan langsung ke UMKM pemilik produk.
 // ============================================================
-const OPSI_PEMBAYARAN_RFQ = ['Cash in Advance / Lunas', 'TOP 14 Hari', 'TOP 30 Hari'];
+const OPSI_PEMBAYARAN_RFQ = ['Cash in Advance / Lunas', 'DP', 'TOP 14 Hari', 'TOP 30 Hari'];
+const OPSI_PEMBAYARAN_SAMPEL = ['Dibeli', 'Pinjam sementara'];
 let rfqState = null;
+
+/** "DP" + 30 -> "DP 30%"; opsi lain apa adanya. */
+function teksPembayaran(opsi, dp) {
+    if (opsi === 'DP' && dp != null && dp !== '') return 'DP ' + Number(dp) + '%';
+    return opsi || '';
+}
+function labelOpsiBayar(o) { return o === 'DP' ? 'DP (uang muka)' : o; }
 
 function bukaRfqKustom() { bukaRfq({ jenis: 'Kustom' }); }
 
@@ -413,92 +472,142 @@ function bukaRfqUntukProdukId(id, jenis) {
 function bukaRfq(opts) {
     const jenis = opts.jenis || 'RFQ';
     const p = opts.produk || null;
+    const sampel = jenis === 'Sampel';
     rfqState = { jenis: jenis, produk: p, tiers: urutkanTier(opts.tiers) };
-    const judul = jenis === 'Sampel' ? 'Permintaan Paket Sampel B2B' : (jenis === 'Kustom' ? 'Pengajuan Penawaran B2B Kustom (RFQ)' : 'Pengajuan Penawaran B2B (RFQ)');
+    const judul = sampel ? 'Permintaan Paket Sampel B2B' : (jenis === 'Kustom' ? 'Pengajuan Penawaran B2B Kustom (RFQ)' : 'Pengajuan Penawaran B2B (RFQ)');
     const satuan = p ? (p.satuan || 'pcs') : '';
     const qty = Math.max(1, Number(opts.qty) || 1);
     const spekAwal = opts.warna ? ('Warna: ' + opts.warna) : '';
+    const opsiBayar = sampel ? OPSI_PEMBAYARAN_SAMPEL : OPSI_PEMBAYARAN_RFQ;
     document.getElementById('previewModalTitle').textContent = judul;
     document.getElementById('previewModalContent').innerHTML = [
       '<form id="rfqForm" class="text-left" onsubmit="submitRfq(event)">',
-      '<p class="text-xs mb-3" style="color:var(--text-muted)">' + (jenis === 'Sampel'
-          ? 'Ajukan paket sampel produk ini sebelum memesan dalam jumlah besar.'
+      '<p class="text-xs mb-3" style="color:var(--text-muted)">' + (sampel
+          ? 'Ajukan paket sampel produk ini sebelum memesan dalam jumlah besar. Pengajuan diterima Admin PortoUMKM lalu diteruskan ke produsen UMKM.'
           : 'Request for Quotation. Pengajuan Anda diterima Admin PortoUMKM, lalu diteruskan ke produsen UMKM untuk penawaran resmi.') + '</p>',
-      '<div class="form-group"><label class="form-label">Nama Perusahaan / Pembeli *</label><input class="form-input" id="rfqNama" required maxlength="200" placeholder="PT / CV / Toko / Nama Lengkap Anda"></div>',
+      '<div class="form-group"><label class="form-label">Nama Perusahaan *</label><input class="form-input" id="rfqPerusahaan" required maxlength="200" placeholder="PT / CV / Toko / Instansi"></div>',
+      '<div class="form-group"><label class="form-label">PIC / Pembeli *</label><input class="form-input" id="rfqPic" required maxlength="200" placeholder="Nama orang yang dihubungi"></div>',
       '<div class="form-group"><label class="form-label">Nomor WhatsApp / HP Aktif *</label><input class="form-input" id="rfqKontak" required maxlength="50" inputmode="tel" placeholder="08xxxxxxxxxx"></div>',
       '<div class="grid grid-cols-2 gap-3">',
-      '<div class="form-group"><label class="form-label">' + (jenis === 'Kustom' ? 'Produk / Kebutuhan *' : 'Produk Dipesan') + '</label>',
+      '<div class="form-group"><label class="form-label">' + (jenis === 'Kustom' ? 'Produk / Kebutuhan *' : (sampel ? 'Sampel Produk' : 'Produk Dipesan')) + '</label>',
       '<input class="form-input" id="rfqProduk" maxlength="300" ' + (p ? 'readonly value="' + escapeAttr(p.nama_produk) + '"' : 'required placeholder="Produk atau jenis kebutuhan Anda"') + '></div>',
-      '<div class="form-group"><label class="form-label">' + (jenis === 'Sampel' ? 'Jumlah Sampel' : 'Target Jumlah' + (satuan ? ' (' + escapeHtml(satuan) + ')' : '')) + ' *</label>',
+      '<div class="form-group"><label class="form-label">' + (sampel ? 'Jumlah Sampel' : 'Target Jumlah' + (satuan ? ' (' + escapeHtml(satuan) + ')' : '')) + ' *</label>',
       '<input class="form-input" id="rfqJumlah" type="number" min="1" required value="' + qty + '" oninput="rfqHitungEstimasi()"></div>',
       '</div>',
+      '<div class="form-group" id="rfqHargaWrap"><label class="form-label">Harga yang Diminta (Rp per ' + escapeHtml(satuan || 'satuan') + ') - opsional</label>',
+      '<input class="form-input" id="rfqHarga" type="number" min="0" inputmode="numeric" placeholder="mis. 30000" oninput="rfqHitungEstimasi()">',
+      '<p class="text-xs mt-1" style="color:var(--text-muted)">Diisi agar produsen UMKM langsung tahu harga yang Anda harapkan.</p></div>',
       '<div class="grid grid-cols-2 gap-3">',
-      '<div class="form-group"><label class="form-label">Opsi Pembayaran Yang Diajukan</label><select class="form-select" id="rfqBayar">' +
-          OPSI_PEMBAYARAN_RFQ.map(function(o) { return '<option>' + escapeHtml(o) + '</option>'; }).join('') + '</select></div>',
+      '<div class="form-group"><label class="form-label">' + (sampel ? 'Skema Sampel' : 'Opsi Pembayaran Yang Diajukan') + '</label><select class="form-select" id="rfqBayar" onchange="rfqBayarBerubah()">' +
+          opsiBayar.map(function(o) { return '<option value="' + escapeAttr(o) + '">' + escapeHtml(labelOpsiBayar(o)) + '</option>'; }).join('') + '</select></div>',
       '<div class="form-group"><label class="form-label">Batas Waktu Pengiriman (Deadline)</label><input class="form-input" id="rfqDeadline" type="date"></div>',
       '</div>',
+      '<div class="form-group" id="rfqDpWrap" style="display:none;"><label class="form-label">Persentase DP yang Diajukan (%) *</label>',
+      '<input class="form-input" id="rfqDp" type="number" min="1" max="99" step="any" inputmode="decimal" placeholder="mis. 30"></div>',
+      '<div class="form-group"><label class="form-label">Alamat Penerima *</label>',
+      '<textarea class="form-textarea" id="rfqAlamat" required maxlength="500" placeholder="Alamat lengkap tujuan pengiriman"></textarea></div>',
       '<div class="form-group"><label class="form-label">Spesifikasi Khusus / Kebutuhan Kustom</label>',
       '<textarea class="form-textarea" id="rfqSpek" maxlength="2000" placeholder="Misal: kebutuhan cetak logo perusahaan di kemasan, standar kemasan vacuum, varian rasa khusus...">' + escapeHtml(spekAwal) + '</textarea></div>',
       '<div id="rfqEstimasi" class="pu-rfq-est"></div>',
       '<div id="rfqError" class="text-xs mt-1 mb-2" style="color:#dc2626;"></div>',
       '<div class="flex justify-end gap-2 mt-3">',
       '<button type="button" class="btn-ghost" onclick="closeModal(\'previewModal\')">Batal</button>',
-      '<button type="submit" class="btn-primary" id="rfqBtnKirim"><i class="bi bi-send"></i> Kirim ' + (jenis === 'Sampel' ? 'Permintaan' : 'RFQ') + ' Sekarang</button>',
+      '<button type="submit" class="btn-primary" id="rfqBtnKirim"><i class="bi bi-send"></i> Kirim ' + (sampel ? 'Permintaan' : 'RFQ') + ' Sekarang</button>',
       '</div>',
       '</form>'
     ].join('');
     openModal('previewModal');
+    rfqBayarBerubah();
+}
+
+/** Tampilkan kolom DP bila memilih DP; sembunyikan harga diminta bila sampel dipinjam (tidak ada transaksi harga). */
+function rfqBayarBerubah() {
+    const st = rfqState;
+    const sel = document.getElementById('rfqBayar');
+    if (!st || !sel) return;
+    const dpWrap = document.getElementById('rfqDpWrap');
+    const hargaWrap = document.getElementById('rfqHargaWrap');
+    if (dpWrap) dpWrap.style.display = (st.jenis !== 'Sampel' && sel.value === 'DP') ? 'block' : 'none';
+    if (hargaWrap) hargaWrap.style.display = (st.jenis === 'Sampel' && sel.value === 'Pinjam sementara') ? 'none' : 'block';
     rfqHitungEstimasi();
 }
-/** Estimasi harga satuan berdasarkan skema grosir untuk jumlah yang diketik. */
+/** Ringkasan di bawah form: acuan harga skema grosir + total pada harga yang diminta. */
 function rfqHitungEstimasi() {
     const el = document.getElementById('rfqEstimasi');
     if (!el || !rfqState) return;
     const p = rfqState.produk;
-    if (!p || rfqState.jenis !== 'RFQ' || !rfqState.tiers.length) { el.style.display = 'none'; return; }
-    const qty = Math.max(1, parseInt(document.getElementById('rfqJumlah').value, 10) || 1);
-    const h = hitungHargaGrosir(p, rfqState.tiers, qty);
-    el.style.display = 'block';
-    el.innerHTML = h.dibawahMoq
-        ? '<i class="bi bi-info-circle"></i> Jumlah di bawah MOQ grosir (' + moqProduk(p, rfqState.tiers) + ' ' + escapeHtml(p.satuan || '') + ').'
-        : '<i class="bi bi-calculator"></i> Estimasi harga: <b>' + formatRupiah(h.harga) + '</b> / ' + escapeHtml(p.satuan || 'pcs') + ' &middot; total <b>' + formatRupiah(h.harga * qty) + '</b> <span class="text-xs">(acuan skema grosir; harga final mengikuti penawaran resmi)</span>';
+    const qty = Math.max(1, parseInt((document.getElementById('rfqJumlah') || {}).value, 10) || 1);
+    const baris = [];
+    if (p && rfqState.jenis === 'RFQ' && rfqState.tiers.length) {
+        const h = hitungHargaGrosir(p, rfqState.tiers, qty);
+        baris.push(h.dibawahMoq
+            ? '<i class="bi bi-info-circle"></i> Jumlah di bawah MOQ grosir (' + moqProduk(p, rfqState.tiers) + ' ' + escapeHtml(p.satuan || '') + ').'
+            : '<i class="bi bi-calculator"></i> Acuan harga grosir: <b>' + formatRupiah(h.harga) + '</b> / ' + escapeHtml(p.satuan || 'pcs') + ' &middot; total <b>' + formatRupiah(h.harga * qty) + '</b> <span class="text-xs">(harga final mengikuti penawaran resmi)</span>');
+    }
+    const hargaEl = document.getElementById('rfqHarga');
+    const hargaWrap = document.getElementById('rfqHargaWrap');
+    const diminta = hargaEl && hargaEl.value !== '' ? Number(hargaEl.value) : null;
+    if (diminta !== null && diminta >= 0 && (!hargaWrap || hargaWrap.style.display !== 'none')) {
+        baris.push('<i class="bi bi-tag"></i> Harga yang Anda minta: <b>' + formatRupiah(diminta) + '</b> / ' + escapeHtml((p && p.satuan) || 'satuan') + ' &middot; perkiraan total <b>' + formatRupiah(diminta * qty) + '</b>');
+    }
+    el.style.display = baris.length ? 'block' : 'none';
+    el.innerHTML = baris.join('<br>');
 }
 
 function submitRfq(e) {
     e.preventDefault();
     const st = rfqState;
     if (!st) return;
-    const errEl = document.getElementById('rfqError');
+    const el = function(id) { return document.getElementById(id); };
+    const errEl = el('rfqError');
     errEl.textContent = '';
     const p = st.produk;
-    const nama = document.getElementById('rfqNama').value.trim();
-    const kontak = document.getElementById('rfqKontak').value.trim();
-    const namaProduk = document.getElementById('rfqProduk').value.trim();
-    const jumlah = parseInt(document.getElementById('rfqJumlah').value, 10);
-    const bayar = document.getElementById('rfqBayar').value;
-    const deadline = document.getElementById('rfqDeadline').value || null;
-    const spek = document.getElementById('rfqSpek').value.trim();
-    if (!nama || !kontak || !namaProduk) { errEl.textContent = 'Lengkapi semua kolom bertanda *.'; return; }
+    const sampel = st.jenis === 'Sampel';
+    const perusahaan = el('rfqPerusahaan').value.trim();
+    const pic = el('rfqPic').value.trim();
+    const kontak = el('rfqKontak').value.trim();
+    const alamat = el('rfqAlamat').value.trim();
+    const namaProduk = el('rfqProduk').value.trim();
+    const jumlah = parseInt(el('rfqJumlah').value, 10);
+    const bayar = el('rfqBayar').value;
+    const deadline = el('rfqDeadline').value || null;
+    const spek = el('rfqSpek').value.trim();
+    if (!perusahaan || !pic || !kontak || !alamat || !namaProduk) { errEl.textContent = 'Lengkapi semua kolom bertanda *.'; return; }
     if (!(jumlah >= 1)) { errEl.textContent = 'Jumlah minimal 1.'; return; }
     if (st.jenis === 'RFQ' && p && st.tiers.length && jumlah < moqProduk(p, st.tiers)) {
         errEl.textContent = 'Jumlah pengajuan RFQ minimal sebesar MOQ grosir: ' + moqProduk(p, st.tiers) + ' ' + (p.satuan || '') + '.';
         return;
     }
+    // harga yang diminta (opsional; tidak berlaku untuk sampel yang dipinjam)
+    const hargaTersedia = !(sampel && bayar === 'Pinjam sementara');
+    let hargaDiminta = null;
+    if (hargaTersedia && el('rfqHarga').value !== '') {
+        hargaDiminta = Number(el('rfqHarga').value);
+        if (!(hargaDiminta >= 0)) { errEl.textContent = 'Harga yang diminta tidak valid.'; return; }
+    }
+    // persentase DP (hanya RFQ yang memilih DP)
+    let dp = null;
+    if (!sampel && bayar === 'DP') {
+        dp = Number(el('rfqDp').value);
+        if (el('rfqDp').value === '' || !(dp >= 1 && dp <= 99)) { errEl.textContent = 'Isi persentase DP antara 1 sampai 99.'; return; }
+    }
     let hargaEstimasi = null;
     if (st.jenis === 'RFQ' && p && st.tiers.length) hargaEstimasi = hitungHargaGrosir(p, st.tiers, jumlah).harga;
 
-    const btn = document.getElementById('rfqBtnKirim');
+    const btn = el('rfqBtnKirim');
     const asli = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-inline"></span> Mengirim...';
     btn.disabled = true;
     const data = {
-        jenis: st.jenis, nama: nama, kontak: kontak, namaProduk: namaProduk, namaUmkm: p ? (p.nama_umkm || '') : '',
-        jumlah: jumlah, satuan: p ? (p.satuan || '') : '', bayar: bayar, deadline: deadline, spek: spek, hargaEstimasi: hargaEstimasi
+        jenis: st.jenis, perusahaan: perusahaan, pic: pic, kontak: kontak, alamat: alamat, namaProduk: namaProduk,
+        namaUmkm: p ? (p.nama_umkm || '') : '', jumlah: jumlah, satuan: p ? (p.satuan || '') : '', hargaDiminta: hargaDiminta,
+        bayar: bayar, dp: dp, deadline: deadline, spek: spek, hargaEstimasi: hargaEstimasi, nomor: ''
     };
-    dbRpc('submit_rfq', {
-        p_jenis: data.jenis, p_nama_pembeli: nama, p_kontak: kontak, p_produk_id: p ? p.id : null,
-        p_nama_produk: namaProduk, p_nama_umkm: data.namaUmkm, p_target_jumlah: jumlah, p_satuan: data.satuan,
-        p_opsi_pembayaran: bayar, p_batas_waktu: deadline, p_spesifikasi: spek, p_harga_estimasi: hargaEstimasi
+    return dbRpc('submit_rfq', {
+        p_jenis: data.jenis, p_nama_perusahaan: perusahaan, p_nama_pic: pic, p_kontak: kontak, p_alamat_penerima: alamat,
+        p_produk_id: p ? p.id : null, p_nama_produk: namaProduk, p_nama_umkm: data.namaUmkm, p_target_jumlah: jumlah, p_satuan: data.satuan,
+        p_harga_diminta: hargaDiminta, p_opsi_pembayaran: bayar, p_dp_persen: dp, p_batas_waktu: deadline,
+        p_spesifikasi: spek, p_harga_estimasi: hargaEstimasi
     }).then(function(res) {
         if (!res.success) {
             btn.innerHTML = asli;
@@ -506,20 +615,26 @@ function submitRfq(e) {
             errEl.textContent = 'Gagal mengirim: ' + res.message;
             return;
         }
+        data.nomor = (res.data && res.data.nomor) || '';
         rfqSelesai(data);
     });
 }
 function pesanWaRfq(d) {
-    let t = d.jenis === 'Sampel'
+    const sampel = d.jenis === 'Sampel';
+    let t = sampel
         ? 'Halo Admin PortoUMKM, saya ingin meminta *Paket Sampel B2B*:\n\n'
         : 'Halo Admin PortoUMKM, saya ingin mengajukan *RFQ B2B* (Request for Quotation):\n\n';
-    t += '*Perusahaan/Pembeli:* ' + d.nama + '\n';
+    if (d.nomor) t += '*No. Dokumen:* ' + d.nomor + '\n';
+    t += '*Perusahaan:* ' + d.perusahaan + '\n';
+    t += '*PIC/Pembeli:* ' + d.pic + '\n';
     t += '*WhatsApp/HP:* ' + d.kontak + '\n';
+    t += '*Alamat Penerima:* ' + d.alamat + '\n';
     t += '*Produk:* ' + d.namaProduk + '\n';
     if (d.namaUmkm) t += '*UMKM:* ' + d.namaUmkm + '\n';
-    t += '*' + (d.jenis === 'Sampel' ? 'Jumlah Sampel' : 'Target Jumlah') + ':* ' + d.jumlah + (d.satuan ? ' ' + d.satuan : '') + '\n';
-    if (d.hargaEstimasi) t += '*Estimasi Harga Satuan:* ' + formatRupiah(d.hargaEstimasi) + ' (acuan skema grosir, final mengikuti penawaran resmi)\n';
-    t += '*Opsi Pembayaran:* ' + d.bayar + '\n';
+    t += '*' + (sampel ? 'Jumlah Sampel' : 'Target Jumlah') + ':* ' + d.jumlah + (d.satuan ? ' ' + d.satuan : '') + '\n';
+    if (d.hargaDiminta != null) t += '*Harga yang Diminta:* ' + formatRupiah(d.hargaDiminta) + (d.satuan ? ' / ' + d.satuan : '') + '\n';
+    if (d.hargaEstimasi) t += '*Acuan Harga Skema Grosir:* ' + formatRupiah(d.hargaEstimasi) + ' (final mengikuti penawaran resmi)\n';
+    t += '*' + (sampel ? 'Skema Sampel' : 'Opsi Pembayaran') + ':* ' + teksPembayaran(d.bayar, d.dp) + '\n';
     if (d.deadline) t += '*Batas Waktu Pengiriman:* ' + d.deadline + '\n';
     if (d.spek) t += '*Spesifikasi/Kebutuhan:* ' + d.spek + '\n';
     return t;
@@ -531,6 +646,7 @@ function rfqSelesai(d) {
       '<div class="text-center py-4">',
       '<i class="bi bi-check-circle-fill" style="font-size:44px; color:#16a34a;"></i>',
       '<h3 class="font-bold mt-3" style="color:var(--text-primary)">' + (d.jenis === 'Sampel' ? 'Permintaan Sampel Tersimpan!' : 'RFQ Tersimpan!') + '</h3>',
+      d.nomor ? '<p class="text-sm mt-1" style="color:var(--text-body)">Nomor dokumen: <b>' + escapeHtml(d.nomor) + '</b></p>' : '',
       '<p class="text-sm mt-1 mb-5" style="color:var(--text-muted)">Klik tombol di bawah untuk mengirim rincian ke WhatsApp Admin supaya segera diproses.</p>',
       url ? ('<a href="' + escapeAttr(url) + '" target="_blank" rel="noopener" class="btn-wa w-full" style="height:48px; font-size:15px;"><i class="bi bi-whatsapp" style="font-size:20px;"></i> Kirim ke WhatsApp Admin</a>')
           : '<p style="color:#d97706;">Nomor WhatsApp Admin belum dikonfigurasi, tetapi pengajuan Anda sudah tersimpan.</p>',
