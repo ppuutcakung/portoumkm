@@ -51,17 +51,9 @@ function setMode(m) {
     }
     AppState.katalogFilter.page = 1;
     const hal = AppState.currentPage;
-    if (hal === 'keranjang' && m === 'b2b') navigateTo('home', { noHistory: true });
-    else if (PUBLIC_PAGES.indexOf(hal) !== -1 && hal !== 'adminLogin') navigateTo(hal);
+    // Keranjang tidak digambar ulang: isinya memuat item dari kedua mode sekaligus.
+    if (hal !== 'keranjang' && PUBLIC_PAGES.indexOf(hal) !== -1 && hal !== 'adminLogin') navigateTo(hal);
 }
-/** Keranjang hanya untuk pesanan ritel: membuka keranjang otomatis kembali ke mode Ritel. */
-function paksaModeRitel() {
-    if (!isB2B()) return;
-    AppState.mode = 'b2c';
-    simpanMode();
-    terapkanTemaMode();
-}
-
 // -------------------- TEMA WARNA (bisa diatur Admin) --------------------
 function normalisasiHex(h) {
     let x = String(h == null ? '' : h).trim().toLowerCase();
@@ -108,6 +100,18 @@ function terapkanWarnaTema() {
     el.textContent = ':root{' + (b2b ? cssPaletWarna('b2b', b2b) : '') + (b2c ? cssPaletWarna('b2c', b2c) : '') + '}';
     document.body.classList.toggle('pu-b2c-custom', !!b2c);
     terapkanTemaMode();
+}
+
+// -------------------- ATURAN PESAN LANGSUNG / RFQ DI MODE GROSIR --------------------
+/** Kuliner & Pertanian: harga sudah tetap, jadi boleh dipesan langsung di mode Grosir. */
+const KATEGORI_PESAN_LANGSUNG = ['PortoRasa', 'PortoTani'];
+function bolehPesanLangsungB2b(p) {
+    return KATEGORI_PESAN_LANGSUNG.indexOf(p.kategori) !== -1;
+}
+/** Kerajinan selalu lewat RFQ; Kuliner/Pertanian mengikuti centang Admin (default tampil). */
+function tampilkanRfq(p) {
+    if (!bolehPesanLangsungB2b(p)) return true;
+    return p.tampilkan_rfq !== false;
 }
 
 // -------------------- HARGA (ritel & grosir bertingkat) --------------------
@@ -216,7 +220,8 @@ function bukaDetailProduk(id) {
             p: p, tiers: tiers, paket: res.data.paket || [], galeri: galeriProduk(p), fotoIdx: 0,
             mode: modeAktif(),
             qty: modeAktif() === 'b2b' ? moqProduk(p, tiers) : 1,
-            warnaList: warna, warna: warna.length === 1 ? warna[0] : ''
+            warnaList: warna, warna: warna.length === 1 ? warna[0] : '',
+            paketIdx: ((res.data.paket || []).length === 1) ? 0 : null
         };
         renderDetailProduk();
     });
@@ -233,6 +238,7 @@ function renderDetailProduk() {
     const p = d.p, b2b = d.mode === 'b2b';
     const satuan = p.satuan || 'pcs';
     const tipe = p.tipe_pemesanan || 'Standar';
+    const adaPaket = tipe === 'Paket' && d.paket.length > 0;
 
     // ---- kolom kiri: galeri + legalitas ----
     const utama = d.galeri[d.fotoIdx] || '';
@@ -264,7 +270,9 @@ function renderDetailProduk() {
             baris += '<tr data-tier="' + i + '"><td>' + escapeHtml(labelRentangTier(d.tiers, i, satuan)) + '</td><td class="pu-td-harga pu-td-grosir">' + formatRupiah(t.harga) + '</td><td class="pu-td-ket">' + escapeHtml(t.keterangan) + '</td></tr>';
         });
         if (!d.tiers.length) {
-            baris = '<tr><td colspan="3" class="pu-td-ket" style="padding:10px 0;">Harga grosir ditentukan lewat penawaran resmi (RFQ). Gunakan tombol "Ajukan RFQ B2B" di bawah.</td></tr>';
+            baris = '<tr><td colspan="3" class="pu-td-ket" style="padding:10px 0;">' + (bolehPesanLangsungB2b(p)
+                ? 'Belum ada skema harga bertingkat. Harga mengikuti harga satuan di bawah.'
+                : 'Harga grosir ditentukan lewat penawaran resmi (RFQ).') + '</td></tr>';
         }
         harga = '<div class="pu-tier-box"><div class="pu-tier-head"><span><i class="bi bi-layers-fill"></i> SKEMA HARGA GROSIR BERTINGKAT (B2B)</span><span class="pu-moq-badge">Minimum MOQ: ' + moq + '</span></div>' +
             '<table class="pu-tier-table"><thead><tr><th>KUANTITAS ORDER</th><th>HARGA / SATUAN</th><th>KETERANGAN</th></tr></thead><tbody id="puTierBody">' + baris + '</tbody></table></div>';
@@ -279,6 +287,19 @@ function renderDetailProduk() {
             (p.minimal_order ? '<div class="pu-minorder"><i class="bi bi-info-circle"></i> Minimal Order: ' + escapeHtml(p.minimal_order) + '</div>' : '') + '</div>';
     }
 
+    // ---- dropdown paket (tetap ada di mode Ritel maupun Grosir) ----
+    let paketHtml = '';
+    if (adaPaket) {
+        paketHtml = '<div class="pu-paket" id="puPaketBox"><div class="pu-label">Pilih Paket <span class="pu-req">*</span></div>' +
+            '<select class="form-select" id="puPaketSelect" onchange="puPilihPaketIdx(this.value)">' +
+            '<option value="">-- Pilih salah satu paket --</option>' +
+            d.paket.map(function(pk, i) {
+                const h = (pk.harga !== null && pk.harga !== undefined && pk.harga !== '') ? Number(pk.harga) : null;
+                return '<option value="' + i + '"' + (d.paketIdx === i ? ' selected' : '') + '>' + escapeHtml(pk.nama_paket) + (h !== null ? ' - ' + formatRupiah(h) : '') + '</option>';
+            }).join('') + '</select>' +
+            '<div class="pu-paket-menu" id="puPaketMenu"></div></div>';
+    }
+
     // ---- pilihan warna ----
     let warna = '';
     if (d.warnaList.length) {
@@ -288,9 +309,10 @@ function renderDetailProduk() {
             }).join('') + '</div></div>';
     }
 
-    // ---- kalkulator jumlah ----
+    // ---- kalkulator: ADA untuk semua produk, kecuali Custom di mode Ritel (harga mengikuti budget) ----
     let kalkulator = '';
-    if (b2b || tipe === 'Standar') {
+    const adaKalkulator = b2b || tipe !== 'Custom';
+    if (adaKalkulator) {
         kalkulator = '<div class="pu-calc"><div class="pu-calc-title"><i class="bi bi-calculator"></i> KALKULATOR PESANAN ' + (b2b ? 'GROSIR' : 'RITEL') + '</div>' +
             '<div class="pu-calc-row"><span class="pu-label" style="margin:0;">Jumlah:</span>' +
             '<div class="pu-qty"><button type="button" onclick="puUbahQty(-10)">-10</button><button type="button" onclick="puUbahQty(-1)">-1</button>' +
@@ -303,12 +325,15 @@ function renderDetailProduk() {
     // ---- tombol aksi ----
     const wa = waLinkHref(p.nama_produk, p.nama_umkm, hargaRitelProduk(p));
     const tombolWa = wa ? '<a class="btn-icon-sm pu-wa" href="' + escapeAttr(wa) + '" target="_blank" rel="noopener" title="Tanya Admin via WhatsApp"><i class="bi bi-whatsapp"></i></a>' : '';
-    let aksi;
+    let aksi = '';
     if (b2b) {
-        aksi = '<button type="button" class="pu-btn-dark" onclick="puMintaSampel()"><i class="bi bi-box-seam"></i> Minta Paket Sampel B2B</button>' +
-               '<button type="button" class="btn-primary" onclick="puAjukanRfq()"><i class="bi bi-file-earmark-text"></i> Ajukan RFQ B2B</button>';
-    } else if (tipe === 'Paket') {
-        aksi = '<button type="button" class="btn-primary" onclick="puPilihPaket()"><i class="bi bi-list-check"></i> Pilih Paket</button>';
+        if (bolehPesanLangsungB2b(p)) {
+            aksi += '<button type="button" class="btn-primary" onclick="puTambahKeranjang()"><i class="bi bi-cart-plus"></i> Pesan Langsung</button>';
+        }
+        if (tampilkanRfq(p)) {
+            aksi += '<button type="button" class="' + (bolehPesanLangsungB2b(p) ? 'pu-btn-dark' : 'btn-primary') + '" onclick="puAjukanRfq()"><i class="bi bi-file-earmark-text"></i> Ajukan RFQ B2B</button>';
+        }
+        aksi += '<button type="button" class="btn-ghost" onclick="puMintaSampel()"><i class="bi bi-box-seam"></i> Minta Sampel</button>';
     } else if (tipe === 'Custom') {
         aksi = '<button type="button" class="btn-primary" onclick="puPesanCustom()"><i class="bi bi-pencil-square"></i> Pesan Custom</button>';
     } else {
@@ -323,10 +348,39 @@ function renderDetailProduk() {
         '<h2 class="pu-detail-title">' + escapeHtml(p.nama_produk) + '</h2>' +
         '<div class="pu-detail-by">Diproduksi oleh: <b>' + escapeHtml(p.nama_umkm) + '</b></div>' +
         (p.deskripsi ? '<p class="pu-detail-desc">' + escapeHtml(p.deskripsi) + '</p>' : '') +
-        harga + warna + kalkulator +
+        harga + paketHtml + warna + kalkulator +
         '<div class="pu-actions">' + tombolWa + aksi + '</div>' +
         '</div></div>';
+    puGambarMenuPaket();
     puHitungUlang();
+}
+/** Tampilkan isi menu paket yang sedang dipilih, di bawah dropdown. */
+function puGambarMenuPaket() {
+    const d = puDetail;
+    const el = document.getElementById('puPaketMenu');
+    if (!d || !el) return;
+    const pk = (d.paketIdx !== null && d.paketIdx !== undefined) ? d.paket[d.paketIdx] : null;
+    el.innerHTML = (pk && pk.deskripsi_menu) ? '<i class="bi bi-list-ul"></i> ' + escapeHtml(pk.deskripsi_menu) : '';
+    el.style.display = (pk && pk.deskripsi_menu) ? 'block' : 'none';
+}
+function puPilihPaketIdx(v) {
+    const d = puDetail;
+    if (!d) return;
+    d.paketIdx = (v === '' || v === null) ? null : Number(v);
+    const box = document.getElementById('puPaketBox');
+    if (box) box.classList.remove('pu-invalid');
+    puGambarMenuPaket();
+    puHitungUlang();
+}
+/** Harga satuan yang berlaku sekarang: paket terpilih mengubah harga dasar di mode Ritel. */
+function puHargaSatuanAktif() {
+    const d = puDetail;
+    if (!d) return 0;
+    const p = d.p, qty = Math.max(1, Number(d.qty) || 1);
+    if (d.mode === 'b2b') return hitungHargaGrosir(p, d.tiers, qty).harga;
+    const pk = (d.paketIdx !== null && d.paketIdx !== undefined) ? d.paket[d.paketIdx] : null;
+    if (pk && pk.harga !== null && pk.harga !== undefined && pk.harga !== '') return Number(pk.harga);
+    return hargaRitelProduk(p);
 }
 
 function puGantiFoto(i) {
@@ -368,16 +422,14 @@ function puHitungUlang() {
     const elTotal = document.getElementById('puTotal');
     const elSub = document.getElementById('puTotalSub');
     const elWarn = document.getElementById('puPeringatan');
-    let harga, warn = '', aktifIdx = null;
+    let warn = '', aktifIdx = null;
+    const harga = puHargaSatuanAktif();
     if (d.mode === 'b2b') {
         const h = hitungHargaGrosir(p, d.tiers, qty);
-        harga = h.harga;
         if (h.tier) aktifIdx = String(d.tiers.indexOf(h.tier));
         else if (h.dibawahMoq && p.tersedia_ritel && d.tiers.length) aktifIdx = 'r';
-        if (!h.adaTier) warn = 'Harga grosir ditentukan lewat penawaran resmi (RFQ). Angka di atas hanya acuan harga ritel.';
-        else if (h.dibawahMoq) warn = 'Jumlah di bawah MOQ grosir (' + moqProduk(p, d.tiers) + ' ' + satuan + '). Pengajuan RFQ minimal sebesar MOQ.';
-    } else {
-        harga = hargaRitelProduk(p);
+        if (!h.adaTier && !bolehPesanLangsungB2b(p)) warn = 'Harga grosir ditentukan lewat penawaran resmi (RFQ). Angka di atas hanya acuan harga ritel.';
+        else if (h.dibawahMoq) warn = 'Jumlah di bawah MOQ grosir (' + moqProduk(p, d.tiers) + ' ' + satuan + ').' + (bolehPesanLangsungB2b(p) ? ' Pesanan langsung minimal sebesar MOQ.' : ' Pengajuan RFQ minimal sebesar MOQ.');
     }
     if (elTotal) elTotal.textContent = formatRupiah(harga * qty);
     if (elSub) elSub.textContent = '(@ ' + formatRupiah(harga) + ' / ' + satuan + ')';
@@ -395,19 +447,36 @@ function puPastikanWarna() {
     showToast('Pilih Warna', 'Silakan pilih warna produk terlebih dahulu.', 'warning');
     return false;
 }
+/** Produk bertipe Paket wajib memilih salah satu paket sebelum dipesan. */
+function puPastikanPaket() {
+    const d = puDetail;
+    if (!d || (d.p.tipe_pemesanan !== 'Paket') || !d.paket.length) return true;
+    if (d.paketIdx !== null && d.paketIdx !== undefined) return true;
+    const box = document.getElementById('puPaketBox');
+    if (box) { box.classList.add('pu-invalid'); box.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    showToast('Pilih Paket', 'Silakan pilih salah satu paket terlebih dahulu.', 'warning');
+    return false;
+}
+/** Di mode Grosir, pesanan langsung minimal sebesar MOQ. */
+function puPastikanMoq() {
+    const d = puDetail;
+    if (!d || d.mode !== 'b2b') return true;
+    const moq = moqProduk(d.p, d.tiers);
+    if (Math.max(1, Number(d.qty) || 1) >= moq) return true;
+    showToast('Jumlah kurang', 'Pesanan grosir minimal ' + moq + ' ' + (d.p.satuan || 'pcs') + '.', 'warning');
+    const inp = document.getElementById('puQtyInput');
+    if (inp) { inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus(); }
+    return false;
+}
 function puTambahKeranjang() {
     const d = puDetail;
-    if (!d || !puPastikanWarna()) return;
+    if (!d || !puPastikanWarna() || !puPastikanPaket() || !puPastikanMoq()) return;
     const p = d.p;
-    addToCart(p.id, p.nama_produk, hargaRitelProduk(p), p.satuan || 'pcs', p.nama_umkm, d.qty, '', d.warna);
+    const pk = (d.paketIdx !== null && d.paketIdx !== undefined) ? d.paket[d.paketIdx] : null;
+    const nama = pk ? (p.nama_produk + ' - ' + pk.nama_paket) : p.nama_produk;
+    const catatan = pk ? (pk.deskripsi_menu || '') : '';
+    addToCart(p.id, nama, puHargaSatuanAktif(), p.satuan || 'pcs', p.nama_umkm, d.qty, catatan, d.warna, d.mode);
     tutupDetailProduk();
-}
-function puPilihPaket() {
-    const d = puDetail;
-    if (!d || !puPastikanWarna()) return;
-    const p = d.p, paket = d.paket, warna = d.warna;
-    tutupDetailProduk();
-    tampilkanPilihPaket(p, paket, warna);
 }
 function puPesanCustom() {
     const d = puDetail;

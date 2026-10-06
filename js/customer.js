@@ -29,7 +29,6 @@ function renderHomePage() {
       '<span class="pill-feature"><i class="bi bi-lightning-charge text-[var(--primary)]"></i> Order Instan Tanpa Registrasi</span>',
       '</div>',
       '<div class="flex flex-wrap gap-3 mt-5">',
-      '<button class="btn-primary" style="height:44px; padding:0 22px;" onclick="navigateTo(\'katalog\')"><i class="bi bi-grid"></i> Jelajahi Katalog Produk</button>',
       '<button class="btn-ghost" id="brosurPdfBtn" style="height:44px; padding:0 22px; display:none;" onclick="downloadBrosurPdf()"><i class="bi bi-download"></i> Unduh Brosur Katalog (PDF)</button>',
       '</div>',
       '</div>',
@@ -235,7 +234,7 @@ function hargaGrosirKartuHtml(p) {
     return '<div class="pu-b2b-box"><div class="pu-b2b-row">' + baris1 + '</div><div class="pu-b2b-row">' + baris2 + '</div></div>';
 }
 function labelAksiKartu(p) {
-    if (isB2B()) return '<i class="bi bi-file-earmark-text"></i> RFQ B2B';
+    if (isB2B()) return bolehPesanLangsungB2b(p) ? '<i class="bi bi-cart-plus"></i> Pesan Langsung' : '<i class="bi bi-file-earmark-text"></i> RFQ B2B';
     if (daftarWarna(p).length) return '<i class="bi bi-palette"></i> Pilih Warna';
     if (p.tipe_pemesanan === 'Paket') return '<i class="bi bi-list-check"></i> Pilih Paket';
     if (p.tipe_pemesanan === 'Custom') return '<i class="bi bi-pencil-square"></i> Pesan Custom';
@@ -294,64 +293,24 @@ function productCardHtml(p) {
       '</div>'
     ].join('');
 }
-/** Tombol utama di kartu: perilaku bergantung pada mode dan jenis produk. */
+/**
+ * Tombol utama di kartu. Apa pun yang butuh pilihan (jumlah, paket, warna, harga
+ * bertingkat) dibuka lewat popup Detail supaya alurnya satu pintu dan kalkulatornya ikut.
+ */
 function aksiUtamaKartu(id) {
     const p = AppState.produkIndex[id];
     if (!p) return;
-    if (isB2B()) { bukaRfqUntukProdukId(id, 'RFQ'); return; }
-    if (daftarWarna(p).length) { bukaDetailProduk(id); return; } // warna wajib dipilih dulu di popup detail
-    if (p.tipe_pemesanan === 'Paket') { bukaPilihPaket(id, ''); return; }
+    if (isB2B()) {
+        if (bolehPesanLangsungB2b(p)) bukaDetailProduk(id);   // perlu jumlah & harga bertingkat
+        else bukaRfqUntukProdukId(id, 'RFQ');
+        return;
+    }
+    if (daftarWarna(p).length || p.tipe_pemesanan === 'Paket') { bukaDetailProduk(id); return; }
     if (p.tipe_pemesanan === 'Custom') {
         bukaPesananCustom({ id: p.id, nama: p.nama_produk, harga: hargaRitelProduk(p), satuan: p.satuan || 'pcs', umkm: p.nama_umkm, warna: '' });
         return;
     }
     addToCart(p.id, p.nama_produk, hargaRitelProduk(p), p.satuan || 'pcs', p.nama_umkm);
-}
-
-// -------------------- POPUP PILIH PAKET --------------------
-let paketAktif = null;
-function bukaPilihPaket(produkId, warna) {
-    document.getElementById('previewModalTitle').textContent = 'Pilih Paket';
-    document.getElementById('previewModalContent').innerHTML = '<div class="empty-state"><div class="spinner-brand" style="margin:0 auto;"></div></div>';
-    openModal('previewModal');
-    dbRpc('get_produk_detail', { p_id: produkId }).then(function(res) {
-        if (!res.success || !res.data || !res.data.produk) {
-            document.getElementById('previewModalContent').innerHTML = '<p class="text-sm" style="color:var(--text-muted)">Gagal memuat data paket' + (res.success ? '.' : ': ' + escapeHtml(res.message)) + '</p>';
-            return;
-        }
-        tampilkanPilihPaket(res.data.produk, res.data.paket || [], warna || '');
-    });
-}
-function tampilkanPilihPaket(p, pakets, warna) {
-    document.getElementById('previewModalTitle').textContent = 'Pilih Paket';
-    openModal('previewModal');
-    if (!pakets.length) {
-        document.getElementById('previewModalContent').innerHTML = '<p class="text-sm" style="color:var(--text-muted)">Belum ada paket tersedia untuk produk ini. Silakan hubungi Admin.</p>';
-        return;
-    }
-    paketAktif = { p: p, pakets: pakets, warna: warna || '' };
-    const hargaDasar = hargaRitelProduk(p);
-    document.getElementById('previewModalContent').innerHTML = '<div class="text-left">' +
-        '<p class="font-bold mb-2" style="color:var(--text-primary)">' + escapeHtml(p.nama_produk) + '</p>' +
-        (warna ? '<p class="text-xs mb-2" style="color:var(--text-muted)">Warna dipilih: <b>' + escapeHtml(warna) + '</b></p>' : '') +
-        pakets.map(function(pk, i) {
-            const harga = (pk.harga !== null && pk.harga !== undefined && pk.harga !== '') ? Number(pk.harga) : hargaDasar;
-            return [
-              '<div class="card p-3 mb-2" style="cursor:pointer;" onclick="pilihPaketIdx(' + i + ')">',
-              '<div class="font-bold" style="color:var(--text-primary)">' + escapeHtml(pk.nama_paket) + '</div>',
-              pk.deskripsi_menu ? ('<div class="text-xs mt-1" style="color:var(--text-muted)">' + escapeHtml(pk.deskripsi_menu) + '</div>') : '',
-              '<div class="font-bold mt-2" style="color:var(--primary)">' + formatRupiah(harga) + ' <span class="text-xs font-normal" style="color:var(--text-muted)">/ ' + escapeHtml(p.satuan || 'pcs') + '</span></div>',
-              '</div>'
-            ].join('');
-        }).join('') + '</div>';
-}
-function pilihPaketIdx(i) {
-    const a = paketAktif;
-    if (!a || !a.pakets[i]) return;
-    const p = a.p, pk = a.pakets[i];
-    const harga = (pk.harga !== null && pk.harga !== undefined && pk.harga !== '') ? Number(pk.harga) : hargaRitelProduk(p);
-    addToCart(p.id, p.nama_produk + ' - ' + pk.nama_paket, harga, p.satuan || 'pcs', p.nama_umkm, 1, pk.deskripsi_menu || '', a.warna);
-    closeModal('previewModal');
 }
 
 // -------------------- POPUP PESANAN CUSTOM --------------------
@@ -382,7 +341,7 @@ function submitPesananCustom(e) {
     let catatan = '';
     if (budget) catatan += 'Budget: ' + formatRupiah(Number(budget)) + '/' + c.satuan;
     if (menu) catatan += (catatan ? ' | ' : '') + 'Menu: ' + menu;
-    addToCart(c.id, c.nama, harga, c.satuan, c.umkm, 1, catatan, c.warna || '');
+    addToCart(c.id, c.nama, harga, c.satuan, c.umkm, 1, catatan, c.warna || '', 'b2c');
     closeModal('previewModal');
 }
 
@@ -436,20 +395,55 @@ function renderKatalogPage() {
         return '<button class="chip chip-solid ' + (f.kategori === s.key ? 'active' : '') + '" onclick="setKatalogKategori(\'' + s.key + '\')">' + s.label + '</button>';
     }).join('');
 
-    const tagList = String(AppState.config.tagCepatList || '').split(',').map(function(t) { return t.trim(); }).filter(Boolean);
-    const tagWrap = document.getElementById('katalogTagCepat');
-    tagList.forEach(function(tag) {
-        const btn = document.createElement('span');
-        btn.className = 'tag-quick';
-        btn.textContent = tag;
-        btn.onclick = function() {
-            AppState.katalogFilter.search = tag;
-            AppState.katalogFilter.page = 1;
-            loadKatalogData();
-        };
-        tagWrap.appendChild(btn);
-    });
+    renderTagCepat();
 
+    loadKatalogData();
+}
+
+/**
+ * Tag Cepat dibuat OTOMATIS dari sub-kategori produk yang benar-benar ada dan
+ * aktif pada mode yang sedang dibuka. Klik tag menyaring sub_kategori PERSIS,
+ * bukan mencari teks, sehingga tag tidak pernah menunjuk ke hasil kosong -
+ * termasuk sub-kategori yang Admin tulis sendiri lewat pilihan "Lainnya".
+ */
+function renderTagCepat() {
+    const wrap = document.getElementById('katalogTagCepat');
+    if (!wrap) return;
+    const mode = modeAktif();
+    const kategori = AppState.katalogFilter.kategori || 'Semua';
+    const cacheKey = 'tagCepat:' + mode + ':' + kategori;
+    const cached = ambilDariCache(cacheKey);
+    if (cached) { gambarTagCepat(cached); return; }
+    dbRpc('get_sub_kategori_aktif', { p_mode: mode, p_kategori: kategori }).then(function(res) {
+        const list = (res.success && Array.isArray(res.data)) ? res.data : [];
+        simpanKeCache(cacheKey, list);
+        if (mode === modeAktif() && kategori === (AppState.katalogFilter.kategori || 'Semua')) gambarTagCepat(list);
+    });
+}
+let tagCepatList = [];
+function gambarTagCepat(list) {
+    const wrap = document.getElementById('katalogTagCepat');
+    if (!wrap) return;
+    tagCepatList = list || [];
+    const aktif = AppState.katalogFilter.subKategori || '';
+    wrap.innerHTML = '<span class="font-bold uppercase" style="color:var(--text-muted); letter-spacing:.03em;">Tag Cepat:</span>';
+    if (!tagCepatList.length) {
+        wrap.innerHTML += '<span style="color:var(--text-muted)">belum ada sub-kategori pada mode ini.</span>';
+        return;
+    }
+    wrap.innerHTML += tagCepatList.map(function(t, i) {
+        return '<span class="tag-quick' + (aktif === t.sub_kategori ? ' active' : '') + '" onclick="pilihTagCepat(' + i + ')">' + escapeHtml(t.sub_kategori) + ' <span class="tag-quick-n">' + t.jumlah + '</span></span>';
+    }).join('');
+}
+/** Klik tag: saring sub-kategori itu; klik lagi pada tag yang sama = batalkan saringan. */
+function pilihTagCepat(i) {
+    const t = tagCepatList[i];
+    if (!t) return;
+    const f = AppState.katalogFilter;
+    f.subKategori = (f.subKategori === t.sub_kategori) ? '' : t.sub_kategori;
+    f.search = '';
+    f.page = 1;
+    gambarTagCepat(tagCepatList);
     loadKatalogData();
 }
 
@@ -471,7 +465,7 @@ function loadKatalogData() {
     const cached = ambilDariCache(cacheKey);
     if (cached) {
         katalogRawItems = cached.items;
-        document.getElementById('katalogResultInfo').textContent = ('Menampilkan ' + (cached.items.length) + ' dari ' + (cached.total) + ' produk (halaman ' + (cached.page) + '/' + (cached.total_pages) + ')');
+        document.getElementById('katalogResultInfo').textContent = teksInfoKatalog(cached);
         renderKatalogItems();
         renderKatalogPagination(cached);
         return;
@@ -494,12 +488,17 @@ function loadKatalogData() {
         }
         simpanKeCache(cacheKey, res.data);
         katalogRawItems = res.data.items;
-        document.getElementById('katalogResultInfo').textContent = ('Menampilkan ' + (res.data.items.length) + ' dari ' + (res.data.total) + ' produk (halaman ' + (res.data.page) + '/' + (res.data.total_pages) + ')');
+        document.getElementById('katalogResultInfo').textContent = teksInfoKatalog(res.data);
         renderKatalogItems();
         renderKatalogPagination(res.data);
     });
 }
 /** Acuan harga untuk pengurutan: harga grosir terendah di mode grosir, harga ritel di mode ritel. */
+function teksInfoKatalog(d) {
+    const f = AppState.katalogFilter;
+    const saring = f.subKategori ? (' - tag "' + f.subKategori + '"') : (f.search ? (' - pencarian "' + f.search + '"') : '');
+    return 'Menampilkan ' + d.items.length + ' dari ' + d.total + ' produk' + saring + ' (halaman ' + d.page + '/' + d.total_pages + ')';
+}
 function hargaUrutKatalog(p) {
     if (isB2B() && p.grosir_min != null) return Number(p.grosir_min);
     return hargaRitelProduk(p);

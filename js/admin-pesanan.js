@@ -1,0 +1,179 @@
+/**
+ * ============================================================
+ * PortoUMKM - Admin: Monitoring Pesanan
+ * Rekap SEMUA pembelian (B2C Ritel dan B2B Grosir) beserta rincian item dan
+ * invoice PDF. Pengajuan RFQ TIDAK masuk ke sini - RFQ ada di menu B2B
+ * tersendiri, karena sifatnya pengajuan harga, bukan pembelian.
+ * ============================================================
+ */
+let adminPesananCache = [];
+let adminPesananRingkas = {};
+let adminPesananMode = 'Semua';    // Semua | b2c | b2b
+let adminPesananStatus = 'Semua';  // Semua | Lunas | Belum Bayar
+
+function renderAdminPesananPage() {
+    const container = document.getElementById('app-container');
+    container.innerHTML = adminPageShell('Monitoring Pesanan', [
+      '<p class="text-sm mb-3" style="color:var(--text-muted)">Rekap seluruh pembelian dari etalase B2C Ritel maupun B2B Grosir. Pengajuan RFQ tidak dimasukkan ke sini karena belum berupa pembelian; lihat menu B2B untuk RFQ.</p>',
+      '<div id="pesananRingkas" class="pu-stat-grid"></div>',
+      '<div class="flex flex-wrap gap-2 mb-2" id="pesananModeChips"></div>',
+      '<div class="flex flex-wrap gap-2 mb-3" id="pesananStatusChips"></div>',
+      '<div class="table-wrap">',
+      '<table class="data-table">',
+      '<thead><tr><th>Tanggal</th><th>No. Pesanan</th><th>Pemesan</th><th>Kirim</th><th>Item</th><th>Total</th><th>Status</th><th></th></tr></thead>',
+      '<tbody id="pesananTbody"><tr><td colspan="8" class="text-center py-4">Memuat...</td></tr></tbody>',
+      '</table>',
+      '</div>'
+    ].join(''));
+    adminPesananMode = 'Semua';
+    adminPesananStatus = 'Semua';
+    loadAdminPesanan();
+}
+function loadAdminPesanan() {
+    const cached = ambilDariCache('adminPesananRekap');
+    if (cached) { adminPesananCache = cached.pesanan; adminPesananRingkas = cached.ringkas; renderPesananTabel(); return; }
+    dbRpc('get_rekap_pesanan').then(function(res) {
+        if (!res.success || !res.data) {
+            showToast('Error', res.message || 'Gagal memuat rekap pesanan.', 'danger');
+            adminPesananCache = []; adminPesananRingkas = {};
+            renderPesananTabel();
+            return;
+        }
+        adminPesananCache = res.data.pesanan || [];
+        adminPesananRingkas = res.data.ringkas || {};
+        simpanKeCache('adminPesananRekap', { pesanan: adminPesananCache, ringkas: adminPesananRingkas });
+        renderPesananTabel();
+    });
+}
+function setModePesananAdmin(m) { adminPesananMode = m; renderPesananTabel(); }
+function setStatusPesananAdmin(st) { adminPesananStatus = st; renderPesananTabel(); }
+
+function labelModePesanan(m) { return m === 'b2b' ? 'B2B Grosir' : 'B2C Ritel'; }
+function tagModePesanan(m) {
+    return '<span class="pu-mode-tag ' + (m === 'b2b' ? 'pu-mode-b2b' : 'pu-mode-b2c') + '">' + (m === 'b2b' ? 'B2B' : 'B2C') + '</span>';
+}
+function itemsPesanan(p) { return Array.isArray(p.items) ? p.items : []; }
+
+/** Ringkasan nilai mengikuti baris yang sedang tampil (ikut filter). */
+function renderRingkasPesanan(items) {
+    const el = document.getElementById('pesananRingkas');
+    if (!el) return;
+    const n = function(x) { return Number(x.total_estimasi) || 0; };
+    const total = items.reduce(function(a, b) { return a + n(b); }, 0);
+    const lunas = items.filter(function(x) { return x.status_bayar === 'Lunas'; });
+    const belum = items.filter(function(x) { return x.status_bayar !== 'Lunas'; });
+    const b2c = items.filter(function(x) { return (x.mode || 'b2c') !== 'b2b'; });
+    const b2b = items.filter(function(x) { return (x.mode || 'b2c') === 'b2b'; });
+    const kartu = [
+        { label: 'Total Nilai Pesanan', nilai: total, sub: items.length + ' pesanan', warna: '#0f172a', ikon: 'bi-receipt' },
+        { label: 'Sudah Dibayar', nilai: lunas.reduce(function(a, b) { return a + n(b); }, 0), sub: lunas.length + ' pesanan', warna: '#16a34a', ikon: 'bi-check-circle' },
+        { label: 'Belum Dibayar', nilai: belum.reduce(function(a, b) { return a + n(b); }, 0), sub: belum.length + ' pesanan', warna: '#dc2626', ikon: 'bi-hourglass-split' },
+        { label: 'Nilai B2C Ritel', nilai: b2c.reduce(function(a, b) { return a + n(b); }, 0), sub: b2c.length + ' pesanan', warna: '#475569', ikon: 'bi-person' },
+        { label: 'Nilai B2B Grosir', nilai: b2b.reduce(function(a, b) { return a + n(b); }, 0), sub: b2b.length + ' pesanan', warna: '#0284c7', ikon: 'bi-building' }
+    ];
+    el.innerHTML = kartu.map(function(k) {
+        return '<div class="pu-stat"><div class="pu-stat-ico" style="background:' + k.warna + '"><i class="bi ' + k.ikon + '"></i></div>' +
+               '<div><div class="pu-stat-label">' + k.label + '</div>' +
+               '<div class="pu-stat-nilai" style="color:' + k.warna + '">' + formatRupiah(k.nilai) + '</div>' +
+               '<div class="pu-stat-sub">' + k.sub + '</div></div></div>';
+    }).join('');
+}
+
+function renderPesananTabel() {
+    const modeChips = document.getElementById('pesananModeChips');
+    const statusChips = document.getElementById('pesananStatusChips');
+    const tbody = document.getElementById('pesananTbody');
+    if (!modeChips || !statusChips || !tbody) return;
+
+    modeChips.innerHTML = [['Semua', 'Semua Jalur'], ['b2c', 'B2C Ritel'], ['b2b', 'B2B Grosir']].map(function(m) {
+        const jml = m[0] === 'Semua' ? adminPesananCache.length : adminPesananCache.filter(function(x) { return (x.mode || 'b2c') === m[0]; }).length;
+        return '<button class="chip ' + (adminPesananMode === m[0] ? 'active' : '') + '" onclick="setModePesananAdmin(\'' + m[0] + '\')">' + m[1] + ' (' + jml + ')</button>';
+    }).join('');
+
+    const sesuaiMode = adminPesananMode === 'Semua' ? adminPesananCache : adminPesananCache.filter(function(x) { return (x.mode || 'b2c') === adminPesananMode; });
+    statusChips.innerHTML = ['Semua', 'Lunas', 'Belum Bayar'].map(function(st) {
+        const jml = st === 'Semua' ? sesuaiMode.length : sesuaiMode.filter(function(x) { return st === 'Lunas' ? x.status_bayar === 'Lunas' : x.status_bayar !== 'Lunas'; }).length;
+        return '<button class="chip chip-solid ' + (adminPesananStatus === st ? 'active' : '') + '" onclick="setStatusPesananAdmin(\'' + st + '\')">' + (st === 'Semua' ? 'Semua Status' : st) + ' (' + jml + ')</button>';
+    }).join('');
+
+    const items = adminPesananStatus === 'Semua' ? sesuaiMode
+        : sesuaiMode.filter(function(x) { return adminPesananStatus === 'Lunas' ? x.status_bayar === 'Lunas' : x.status_bayar !== 'Lunas'; });
+    renderRingkasPesanan(items);
+
+    if (!items.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4" style="color:var(--text-muted)">' + (adminPesananCache.length ? 'Tidak ada pesanan dengan filter ini.' : 'Belum ada pesanan masuk.') + '</td></tr>';
+        return;
+    }
+    tbody.innerHTML = items.map(function(p) {
+        const id = idAman(p.id);
+        const mode = p.mode || 'b2c';
+        const its = itemsPesanan(p);
+        const ringkasItem = its.slice(0, 2).map(function(i) {
+            return escapeHtml(i.nama_produk + (i.warna ? ' [' + i.warna + ']' : '') + ' x' + i.qty + (i.satuan || ''));
+        }).join('<br>') + (its.length > 2 ? ('<div class="text-xs" style="color:var(--text-muted)">+' + (its.length - 2) + ' item lain</div>') : '');
+        const pemesan = (mode === 'b2b' && p.nama_perusahaan)
+            ? '<div class="font-semibold" style="color:var(--text-primary)">' + escapeHtml(p.nama_perusahaan) + '</div><div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(p.nama_pemesan) + ' &middot; ' + escapeHtml(p.no_hp || '') + '</div>'
+            : '<div class="font-semibold" style="color:var(--text-primary)">' + escapeHtml(p.nama_pemesan) + '</div><div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(p.no_hp || '') + '</div>';
+        return [
+          '<tr>',
+          '<td class="whitespace-nowrap">' + tanggalIndo(p.created_at) + '<div>' + tagModePesanan(mode) + '</div></td>',
+          '<td class="whitespace-nowrap font-semibold" style="color:var(--text-primary)">' + escapeHtml(p.nomor || '-') + '</td>',
+          '<td style="max-width:200px; white-space:normal;">' + pemesan + '</td>',
+          '<td class="whitespace-nowrap text-xs">' + (p.tanggal_kirim ? tanggalDateIndo(p.tanggal_kirim) : '-') + '<div style="color:var(--text-muted)">' + escapeHtml(p.jam_maksimal || '-') + '</div></td>',
+          '<td style="max-width:220px; white-space:normal;" class="text-xs">' + (ringkasItem || '-') + '</td>',
+          '<td class="whitespace-nowrap font-semibold">' + formatRupiah(p.total_estimasi) + '</td>',
+          '<td><span class="status-pill ' + (p.status_bayar === 'Lunas' ? 'aktif' : 'nonaktif') + '">' + escapeHtml(p.status_bayar) + '</span></td>',
+          '<td class="whitespace-nowrap">',
+          '<button class="btn-icon-sm" onclick="unduhInvoiceById(\'' + id + '\')" title="Unduh Invoice PDF"><i class="bi bi-file-earmark-pdf" style="color:#dc2626;"></i></button> ',
+          '<button class="btn-icon-sm" onclick="lihatPesananAdmin(\'' + id + '\')" title="Lihat detail"><i class="bi bi-eye"></i></button>',
+          '</td>',
+          '</tr>'
+        ].join('');
+    }).join('');
+}
+function cariPesananAdmin(id) { return adminPesananCache.find(function(x) { return x.id === id; }); }
+function unduhInvoiceById(id) {
+    const p = cariPesananAdmin(id);
+    if (!p) { showToast('Gagal', 'Data pesanan tidak ditemukan. Muat ulang halaman lalu coba lagi.', 'danger'); return; }
+    unduhInvoicePesanan(p);
+}
+function lihatPesananAdmin(id) {
+    const p = cariPesananAdmin(id);
+    if (!p) return;
+    const mode = p.mode || 'b2c';
+    const baris = function(label, nilai) {
+        return '<div class="flex gap-3 py-1" style="border-bottom:1px solid #f1f5f9;"><div class="text-xs font-bold" style="width:150px; flex:none; color:var(--text-muted);">' + label + '</div><div class="text-sm" style="color:var(--text-primary); white-space:pre-line;">' + (nilai ? escapeHtml(nilai) : '-') + '</div></div>';
+    };
+    const its = itemsPesanan(p);
+    const tabelItem = its.length ? ('<table class="data-table" style="margin-top:10px;"><thead><tr><th>Produk</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead><tbody>' +
+        its.map(function(i) {
+            const sub = (Number(i.harga_satuan) || 0) * (Number(i.qty) || 0);
+            return '<tr><td style="white-space:normal;">' + escapeHtml(i.nama_produk) + (i.warna ? ' <span class="text-xs">[' + escapeHtml(i.warna) + ']</span>' : '') +
+                   '<div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(i.nama_umkm || '') + (i.catatan ? ' &middot; ' + escapeHtml(i.catatan) : '') + '</div></td>' +
+                   '<td class="whitespace-nowrap">' + i.qty + ' ' + escapeHtml(i.satuan || '') + '</td>' +
+                   '<td class="whitespace-nowrap">' + formatRupiah(i.harga_satuan) + '</td>' +
+                   '<td class="whitespace-nowrap">' + formatRupiah(sub) + '</td></tr>';
+        }).join('') + '</tbody></table>') : '<p class="text-sm mt-2" style="color:var(--text-muted)">Rincian item tidak tersedia.</p>';
+    const noWa = normalisasiNoWa(p.no_hp);
+    const pesan = 'Halo ' + (p.nama_pemesan || '') + ', kami dari PortoUMKM menindaklanjuti pesanan ' + (p.nomor || '') + ' senilai ' + formatRupiah(p.total_estimasi) + '.';
+    document.getElementById('previewModalTitle').textContent = 'Detail Pesanan';
+    document.getElementById('previewModalContent').innerHTML = '<div class="text-left">' +
+        baris('No. Pesanan', p.nomor) +
+        baris('Jalur', labelModePesanan(mode)) +
+        baris('Tanggal pesan', tanggalIndo(p.created_at)) +
+        (mode === 'b2b' ? baris('Nama Perusahaan', p.nama_perusahaan) : '') +
+        baris(mode === 'b2b' ? 'PIC / Pemesan' : 'Nama Pemesan', p.nama_pemesan) +
+        baris('WhatsApp/HP', p.no_hp) +
+        baris('Alamat Penerima', p.alamat_kirim) +
+        baris('Tanggal dikirim', p.tanggal_kirim ? tanggalDateIndo(p.tanggal_kirim) : '') +
+        baris('Maksimal jam sampai', p.jam_maksimal) +
+        baris('Catatan tambahan', p.catatan) +
+        baris('Status bayar', p.status_bayar) +
+        baris('Total', formatRupiah(p.total_estimasi)) +
+        tabelItem +
+        '<div class="flex gap-2 mt-4 flex-wrap">' +
+        '<button type="button" class="btn-primary" style="flex:1; min-width:150px; height:44px;" onclick="unduhInvoiceById(\'' + idAman(p.id) + '\')"><i class="bi bi-file-earmark-pdf"></i> Unduh Invoice</button>' +
+        (noWa ? '<a class="btn-wa" style="flex:1; min-width:150px; height:44px;" href="https://wa.me/' + noWa + '?text=' + encodeURIComponent(pesan) + '" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Hubungi Pemesan</a>' : '') +
+        '</div></div>';
+    openModal('previewModal');
+}

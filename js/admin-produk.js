@@ -273,8 +273,11 @@ function openProdukForm(p) {
       '</div>',
       '<div class="grid grid-cols-2 gap-3">',
       '<div class="form-group"><label class="form-label">Kategori *</label><select class="form-select" id="pfKategori" required onchange="gantiKategoriForm(this.value)">', kategoriOptions, '</select></div>',
-      '<div class="form-group"><label class="form-label">Sub-kategori</label><select class="form-select" id="pfSubKategori"></select></div>',
+      '<div class="form-group"><label class="form-label">Sub-kategori</label><select class="form-select" id="pfSubKategori" onchange="toggleSubLainnya()"></select></div>',
       '</div>',
+      '<div class="form-group hidden" id="pfSubLainnyaWrap"><label class="form-label">Tulis Sub-kategori Sendiri *</label>',
+      '<input class="form-input" id="pfSubLainnya" maxlength="60" placeholder="mis. Katering Harian">',
+      '<p class="pf-foto-info">Teks ini otomatis muncul sebagai Tag Cepat di katalog publik.</p></div>',
       '<div class="form-group hidden" id="pfWarnaWrap"><label class="form-label">Pilihan Warna (pisahkan dengan koma)</label>',
       '<input class="form-input" id="pfWarna" value="', escapeAttr(daftarWarna(p).join(', ')), '" placeholder="mis. Merah, Biru, Hijau">',
       '<p class="pf-foto-info">Pelanggan wajib memilih salah satu warna saat memesan (mode Ritel). Warna yang dipilih ikut tercatat di keranjang, pesan WhatsApp, dan data pesanan.</p></div>',
@@ -284,6 +287,10 @@ function openProdukForm(p) {
       '<label class="pf-cek"><input type="checkbox" id="pfRitel" ', (ritel ? 'checked' : ''), ' onchange="perbaruiAturanForm()"> B2C Ritel (eceran, lewat keranjang)</label>',
       '<label class="pf-cek"><input type="checkbox" id="pfGrosir" ', (grosir ? 'checked' : ''), ' onchange="perbaruiAturanForm()"> B2B Grosir (harga bertingkat, pesanan lewat RFQ)</label>',
       '<div id="pfGrosirSection" class="hidden" style="margin-top:10px;">',
+      '<div id="pfRfqWrap" class="hidden" style="margin-bottom:10px;">',
+      '<label class="pf-cek"><input type="checkbox" id="pfTampilkanRfq" ', (p.tampilkan_rfq === false ? '' : 'checked'), ' onchange="perbaruiAturanForm()"> Tampilkan tombol "Ajukan RFQ B2B"</label>',
+      '<p class="pf-foto-info">Produk Kuliner &amp; Pertanian bisa dipesan langsung karena harganya sudah tetap. Centang ini tetap menyediakan jalur pengajuan harga khusus (RFQ). Untuk Kerajinan, RFQ selalu tampil dan tidak bisa dimatikan.</p>',
+      '</div>',
       '<div class="form-group"><label class="form-label">MOQ Grosir (jumlah minimal order)</label><input class="form-input" type="number" min="1" id="pfMoq" value="', escapeAttr(p.moq_grosir || ''), '" placeholder="mis. 10">',
       '<p class="pf-foto-info">Kalau Anda mengisi tier harga di bawah, MOQ otomatis mengikuti jumlah tier pertama.</p></div>',
       '<label class="form-label">Harga Grosir Bertingkat</label>',
@@ -370,6 +377,9 @@ function perbaruiAturanForm() {
     el('pfHargaNormal').required = hargaWajib;
     el('pfHargaNormalLabel').textContent = hargaWajib ? 'Harga Normal (Rp) *' : 'Harga Normal (Rp) - opsional' + (tipe === 'Custom' ? ' untuk tipe Custom' : ' bila hanya tampil di B2B');
     el('pfWarnaWrap').classList.toggle('hidden', el('pfKategori').value !== 'PortoKriya');
+    const bolehLangsung = KATEGORI_PESAN_LANGSUNG.indexOf(el('pfKategori').value) !== -1;
+    el('pfRfqWrap').classList.toggle('hidden', !(grosir && bolehLangsung));
+    toggleSubLainnya();
 }
 function gantiKategoriForm(kategori) {
     renderSubKategoriOptions(kategori);
@@ -550,12 +560,41 @@ function renderBarisPaket() {
         ].join('');
     }).join('') || '<p class="text-xs" style="color:var(--text-muted)">Belum ada paket. Klik "Tambah Paket" di bawah.</p>';
 }
+const SUB_LAINNYA = 'Lainnya';
+/**
+ * Daftar sub-kategori + pilihan "Lainnya" di urutan terakhir. Kalau produk yang
+ * diedit memakai sub-kategori di luar daftar (ditulis sendiri sebelumnya),
+ * "Lainnya" otomatis terpilih dan teksnya muncul di kolom tulis manual.
+ */
 function renderSubKategoriOptions(kategoriKey, selected) {
     const struk = AppState.kategoriStruktur || {};
     const el = document.getElementById('pfSubKategori');
-    if (!el || !struk[kategoriKey])
-        return;
-    el.innerHTML = (struk[kategoriKey].sub || []).map(s => ('<option value="' + (s) + '" ' + (s === selected ? 'selected' : '') + '>' + (s) + '</option>')).join('');
+    if (!el || !struk[kategoriKey]) return;
+    const daftar = (struk[kategoriKey].sub || []).slice();
+    const sel = selected || '';
+    const diLuarDaftar = sel && daftar.indexOf(sel) === -1;
+    const terpilih = diLuarDaftar ? SUB_LAINNYA : sel;
+    el.innerHTML = daftar.concat([SUB_LAINNYA]).map(function(x) {
+        return '<option value="' + escapeAttr(x) + '"' + (x === terpilih ? ' selected' : '') + '>' + escapeHtml(x) + '</option>';
+    }).join('');
+    const manual = document.getElementById('pfSubLainnya');
+    if (manual) manual.value = diLuarDaftar ? sel : '';
+    toggleSubLainnya();
+}
+/** Tampilkan kolom tulis manual hanya saat "Lainnya" dipilih. */
+function toggleSubLainnya() {
+    const sel = document.getElementById('pfSubKategori');
+    const wrap = document.getElementById('pfSubLainnyaWrap');
+    if (!sel || !wrap) return;
+    wrap.classList.toggle('hidden', sel.value !== SUB_LAINNYA);
+}
+/** Nilai sub-kategori yang disimpan: isian manual kalau "Lainnya", selain itu pilihan dropdown. */
+function nilaiSubKategori() {
+    const sel = document.getElementById('pfSubKategori');
+    if (!sel) return '';
+    if (sel.value !== SUB_LAINNYA) return sel.value;
+    const manual = document.getElementById('pfSubLainnya');
+    return manual ? manual.value.trim().slice(0, 60) : '';
 }
 
 /** Sinkronkan tier harga grosir: hapus tier lama lalu tulis ulang sesuai isi form. */
@@ -602,6 +641,11 @@ async function submitProdukForm(e) {
         tiers = v.tiers; moq = v.moq;
     }
     const kategori = el('pfKategori').value;
+    if (!nilaiSubKategori()) {
+        showToast('Peringatan', 'Sub-kategori "Lainnya" dipilih: tulis dulu nama sub-kategorinya.', 'warning');
+        el('pfSubLainnya').focus();
+        return;
+    }
     const record = {
         nama_produk: el('pfNama').value.trim(),
         nama_umkm: el('pfUmkm').value.trim(),
@@ -611,7 +655,7 @@ async function submitProdukForm(e) {
         satuan: el('pfSatuan').value.trim() || 'pcs',
         minimal_order: el('pfMinimalOrder').value.trim(),
         kategori: kategori,
-        sub_kategori: el('pfSubKategori').value,
+        sub_kategori: nilaiSubKategori(),
         badge: el('pfBadge').value.trim(),
         rating: el('pfRating').value ? Number(el('pfRating').value) : 0,
         jumlah_ulasan: el('pfJumlahUlasan').value ? Number(el('pfJumlahUlasan').value) : 0,
@@ -620,6 +664,7 @@ async function submitProdukForm(e) {
         tersedia_ritel: ritel,
         tersedia_grosir: grosir,
         moq_grosir: grosir ? moq : null,
+        tampilkan_rfq: (KATEGORI_PESAN_LANGSUNG.indexOf(kategori) === -1) ? true : el('pfTampilkanRfq').checked,
         sertifikasi: bacaSertifikatDariForm(),
         ketahanan_simpan: el('pfKetahanan').value.trim(),
         warna_pilihan: kategori === 'PortoKriya' ? parseDaftarWarna(el('pfWarna').value) : []

@@ -27,20 +27,24 @@ function updateCartBadge() {
 }
 /**
  * @param {string} [warna] - warna yang dipilih customer (opsional, untuk produk yang punya pilihan warna).
+ * @param {'b2c'|'b2b'} [mode] - jalur pemesanan; menentukan harga yang dipakai dan jenis pesanan yang tercatat.
  * @param {string} [catatan] - pilihan paket / permintaan custom (opsional).
  *   Item dengan id SAMA tapi catatan BEDA diperlakukan sebagai baris
  *   terpisah di keranjang (mis. "Snack Box - Paket A" dan "Snack Box -
  *   Paket B" dari produk yang sama, tidak digabung jadi satu baris).
  */
-function addToCart(id, nama, harga, satuan, umkm, qty, catatan, warna) {
+function addToCart(id, nama, harga, satuan, umkm, qty, catatan, warna, mode) {
     qty = Math.max(1, parseInt(qty, 10) || 1);
     catatan = catatan || '';
     warna = warna || '';
-    const existing = AppState.cart.find(i => i.id === id && (i.catatan || '') === catatan && (i.warna || '') === warna);
+    mode = mode === 'b2b' ? 'b2b' : 'b2c';
+    // Baris digabung hanya kalau produk, catatan, warna, DAN mode-nya sama: harga grosir
+    // dan harga ritel berbeda, jadi tidak boleh tercampur dalam satu baris.
+    const existing = AppState.cart.find(i => i.id === id && (i.catatan || '') === catatan && (i.warna || '') === warna && (i.mode || 'b2c') === mode && i.hargaSatuan === harga);
     if (existing)
         existing.qty += qty;
     else
-        AppState.cart.push({ id, nama, hargaSatuan: harga, satuan, umkm, qty, catatan, warna });
+        AppState.cart.push({ id, nama, hargaSatuan: harga, satuan, umkm, qty, catatan, warna, mode });
     saveCartToStorage();
     showToast('Ditambahkan', nama + (warna ? ' (' + warna + ')' : '') + ' masuk ke keranjang.', 'success');
 }
@@ -52,10 +56,23 @@ function renderKeranjangPage() {
         return;
     }
     const total = AppState.cart.reduce((s, i) => s + i.hargaSatuan * i.qty, 0);
-    container.innerHTML = ('\n    <div class="page-wrap" style="display:grid; gap:24px; grid-template-columns:1fr;" id="cartGridWrap">\n      <div>\n        <h1 class="text-xl font-extrabold mb-4" style="color:var(--text-primary)">Keranjang &amp; Pesanan</h1>\n        <div id="cartItemsWrap"></div>\n        <button class="btn-ghost mt-2" onclick="navigateTo(\'katalog\')"><i class="bi bi-plus-lg"></i> Tambah Produk Lain dari Katalog</button>\n        <div class="card p-4 mt-4 flex items-center justify-between">\n          <span class="font-bold" style="color:var(--text-primary)">Total Estimasi Di Bayar</span>\n          <span class="text-xl font-extrabold" style="color:var(--primary)">' + (formatRupiah(total)) + '</span>\n        </div>\n      </div>\n      <div>\n        <div class="card p-4 md:p-5"><div id="checkoutCardBody">\n          <h3 class="font-bold text-center mb-1" style="color:var(--text-primary)"><i class="bi bi-patch-check-fill" style="color:#16a34a;"></i> Data Pemesan</h3>\n          <p class="text-center text-xs mb-4" style="color:var(--text-muted)">Lengkapi data untuk membuat format pesanan resmi</p>\n          <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">\n            <div class="form-group">\n              <label class="form-label">Nama Lengkap Pemesan / Instansi *</label>\n              <input class="form-input" id="cfNama" required placeholder="Bpk/Ibu ... (Divisi/Instansi)">\n            </div>\n            <div class="form-group">\n              <label class="form-label">Nomor WhatsApp / HP Aktif *</label>\n              <input class="form-input" id="cfHp" required placeholder="08xxxxxxxxxx">\n            </div>\n            <div class="form-group">\n              <label class="form-label">Alamat Pengiriman Lengkap *</label>\n              <textarea class="form-textarea" id="cfAlamat" required placeholder="Nama gedung, jalan, kecamatan, kota"></textarea>\n            </div>\n            <div class="grid grid-cols-2 gap-3">\n              <div class="form-group">\n                <label class="form-label">Tanggal Kirim *</label>\n                <input class="form-input" type="date" id="cfTanggal" required>\n              </div>\n              <div class="form-group">\n                <label class="form-label">Maks. Jam Sampai *</label>\n                <input class="form-input" type="time" id="cfJam" required>\n              </div>\n            </div>\n            <div class="form-group">\n              <label class="form-label">Catatan Tambahan (Opsional)</label>\n              <textarea class="form-textarea" id="cfCatatan" placeholder="Contoh: titip di resepsionis / tidak pakai pedas..."></textarea>\n            </div>\n            <button type="submit" class="btn-wa w-full" style="height:46px;"><i class="bi bi-whatsapp" style="font-size:18px;"></i> Kirim Pesanan via WhatsApp Admin</button>\n            <p class="text-center text-[11px] mt-2" style="color:var(--text-muted)">Langsung terhubung ke WhatsApp Admin - Tanpa Login</p>\n          </form></div>\n        </div>\n      </div>\n    </div>\n  ');
+    container.innerHTML = ('\n    <div class="page-wrap" style="display:grid; gap:24px; grid-template-columns:1fr;" id="cartGridWrap">\n      <div>\n        <h1 class="text-xl font-extrabold mb-4" style="color:var(--text-primary)">Keranjang &amp; Pesanan</h1>\n        <div id="cartItemsWrap"></div>\n        <button class="btn-ghost mt-2" onclick="navigateTo(\'katalog\')"><i class="bi bi-plus-lg"></i> Tambah Produk Lain dari Katalog</button>\n        <div class="card p-4 mt-4 flex items-center justify-between">\n          <span class="font-bold" style="color:var(--text-primary)">Total Estimasi Di Bayar</span>\n          <span class="text-xl font-extrabold" style="color:var(--primary)">' + (formatRupiah(total)) + '</span>\n        </div>\n      </div>\n      <div>\n        <div class="card p-4 md:p-5"><div id="checkoutCardBody">\n          <h3 class="font-bold text-center mb-1" style="color:var(--text-primary)"><i class="bi bi-patch-check-fill" style="color:#16a34a;"></i> Data Pemesan</h3>\n          <p class="text-center text-xs mb-4" style="color:var(--text-muted)">Lengkapi data untuk membuat format pesanan resmi</p>\n          <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">\n            <div class="form-group hidden" id="cfPerusahaanWrap">\n              <label class="form-label">Nama Perusahaan *</label>\n              <input class="form-input" id="cfPerusahaan" maxlength="200" placeholder="PT / CV / Toko / Instansi">\n            </div>\n            <div class="form-group">\n              <label class="form-label" id="cfNamaLabel">Nama Lengkap Pemesan / Instansi *</label>\n              <input class="form-input" id="cfNama" required placeholder="Bpk/Ibu ... (Divisi/Instansi)">\n            </div>\n            <div class="form-group">\n              <label class="form-label">Nomor WhatsApp / HP Aktif *</label>\n              <input class="form-input" id="cfHp" required placeholder="08xxxxxxxxxx">\n            </div>\n            <div class="form-group">\n              <label class="form-label">Alamat Pengiriman Lengkap *</label>\n              <textarea class="form-textarea" id="cfAlamat" required placeholder="Nama gedung, jalan, kecamatan, kota"></textarea>\n            </div>\n            <div class="grid grid-cols-2 gap-3">\n              <div class="form-group">\n                <label class="form-label">Tanggal Kirim *</label>\n                <input class="form-input" type="date" id="cfTanggal" required>\n              </div>\n              <div class="form-group">\n                <label class="form-label">Maks. Jam Sampai *</label>\n                <input class="form-input" type="time" id="cfJam" required>\n              </div>\n            </div>\n            <div class="form-group">\n              <label class="form-label">Catatan Tambahan (Opsional)</label>\n              <textarea class="form-textarea" id="cfCatatan" placeholder="Contoh: titip di resepsionis / tidak pakai pedas..."></textarea>\n            </div>\n            <button type="submit" class="btn-wa w-full" style="height:46px;"><i class="bi bi-whatsapp" style="font-size:18px;"></i> Kirim Pesanan via WhatsApp Admin</button>\n            <p class="text-center text-[11px] mt-2" style="color:var(--text-muted)">Langsung terhubung ke WhatsApp Admin - Tanpa Login</p>\n          </form></div>\n        </div>\n      </div>\n    </div>\n  ');
     if (window.innerWidth >= 992)
         document.getElementById('cartGridWrap').style.gridTemplateColumns = '1.4fr 1fr';
     renderCartItems();
+    terapkanModePesanan();
+}
+/** Pesanan dianggap B2B kalau ada satu saja item yang dipesan lewat jalur Grosir. */
+function modePesanan() {
+    return AppState.cart.some(function(i) { return (i.mode || 'b2c') === 'b2b'; }) ? 'b2b' : 'b2c';
+}
+/** Mode B2B: minta Nama Perusahaan, dan label pemesan menjadi PIC/Pemesan. */
+function terapkanModePesanan() {
+    const b2b = modePesanan() === 'b2b';
+    const wrap = document.getElementById('cfPerusahaanWrap');
+    const label = document.getElementById('cfNamaLabel');
+    if (wrap) wrap.classList.toggle('hidden', !b2b);
+    if (label) label.textContent = b2b ? 'PIC / Pemesan *' : 'Nama Lengkap Pemesan / Instansi *';
 }
 
 function renderCartItems() {
@@ -83,7 +100,9 @@ function removeCartItem(idx) {
 
 function handleCheckoutSubmit(e) {
     e.preventDefault();
+    const mode = modePesanan();
     const nama = document.getElementById('cfNama').value.trim();
+    const perusahaan = mode === 'b2b' ? document.getElementById('cfPerusahaan').value.trim() : '';
     const hp = document.getElementById('cfHp').value.trim();
     const alamat = document.getElementById('cfAlamat').value.trim();
     const tanggal = document.getElementById('cfTanggal').value;
@@ -91,6 +110,11 @@ function handleCheckoutSubmit(e) {
     const catatan = document.getElementById('cfCatatan').value.trim();
     if (!nama || !hp || !alamat || !tanggal || !jam) {
         showToast('Peringatan', 'Lengkapi semua field wajib.', 'warning');
+        return;
+    }
+    if (mode === 'b2b' && !perusahaan) {
+        showToast('Peringatan', 'Nama Perusahaan wajib diisi untuk pesanan grosir.', 'warning');
+        document.getElementById('cfPerusahaan').focus();
         return;
     }
     if (!AppState.cart.length) {
@@ -108,8 +132,9 @@ function handleCheckoutSubmit(e) {
     btn.innerHTML = '<span class="spinner-inline"></span> Memproses...';
     btn.disabled = true;
     dbRpc('submit_pesanan', {
-        p_nama_pemesan: nama, p_no_hp: hp, p_alamat_kirim: alamat, p_tanggal_kirim: tanggal,
-        p_jam_maksimal: jam, p_catatan: catatan, p_total_estimasi: total, p_items: items
+        p_nama_pemesan: nama, p_nama_perusahaan: perusahaan, p_no_hp: hp, p_alamat_kirim: alamat,
+        p_tanggal_kirim: tanggal, p_jam_maksimal: jam, p_catatan: catatan, p_total_estimasi: total,
+        p_items: items, p_mode: mode
     }).then(function(res) {
         btn.innerHTML = original;
         btn.disabled = false;
@@ -119,7 +144,7 @@ function handleCheckoutSubmit(e) {
         }
         AppState.cart = [];
         saveCartToStorage();
-        tampilkanKonfirmasiWhatsApp({ nama, hp, alamat, tanggal, jam, catatan, rincian: rincianTampilan, total });
+        tampilkanKonfirmasiWhatsApp({ nama, perusahaan, hp, alamat, tanggal, jam, catatan, rincian: rincianTampilan, total, mode, nomor: (res.data && res.data.nomor) || '' });
     });
 }
 /**
@@ -129,10 +154,12 @@ function handleCheckoutSubmit(e) {
  */
 function tampilkanKonfirmasiWhatsApp(order) {
     const waNumber = String(AppState.config.waAdminNumber || '').replace(/[^0-9]/g, '');
-    let text = 'Halo Admin PortoUMKM, saya ingin memesan:\n\n';
+    let text = (order.mode === 'b2b' ? 'Halo Admin PortoUMKM, saya ingin memesan (GROSIR B2B):\n\n' : 'Halo Admin PortoUMKM, saya ingin memesan:\n\n');
     text += ('*Rincian Pesanan:*\n' + (order.rincian) + '\n\n');
     text += ('*Total Estimasi:* ' + (formatRupiah(order.total)) + '\n\n');
-    text += ('*Nama Pemesan:* ' + (order.nama) + '\n');
+    if (order.nomor) text += ('*No. Pesanan:* ' + (order.nomor) + '\n');
+    if (order.perusahaan) text += ('*Perusahaan:* ' + (order.perusahaan) + '\n');
+    text += ((order.mode === 'b2b' ? '*PIC/Pemesan:* ' : '*Nama Pemesan:* ') + (order.nama) + '\n');
     text += ('*No. HP:* ' + (order.hp) + '\n');
     text += ('*Alamat Kirim:* ' + (order.alamat) + '\n');
     text += ('*Tanggal Kirim:* ' + (order.tanggal) + '\n');
@@ -146,6 +173,7 @@ function tampilkanKonfirmasiWhatsApp(order) {
       '<div class="text-center py-4">',
       '<i class="bi bi-check-circle-fill" style="font-size:44px; color:#16a34a;"></i>',
       '<h3 class="font-bold mt-3" style="color:var(--text-primary)">Pesanan Tersimpan!</h3>',
+      order.nomor ? ('<p class="text-sm mt-1" style="color:var(--text-body)">No. Pesanan: <b>' + escapeHtml(order.nomor) + '</b></p>') : '',
       '<p class="text-sm mt-1 mb-5" style="color:var(--text-muted)">Klik tombol di bawah untuk mengirim rincian pesanan ke WhatsApp Admin.</p>',
       url
         ? ('<a href="' + url + '" target="_blank" rel="noopener" class="btn-wa w-full" style="height:48px; font-size:15px;"><i class="bi bi-whatsapp" style="font-size:20px;"></i> Buka WhatsApp Sekarang</a>')

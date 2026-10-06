@@ -92,7 +92,6 @@ function navigateTo(pageName, options) {
     if (ADMIN_PAGES.includes(pageName) && !AppState.session) {
         pageName = 'adminLogin';
     }
-    if (pageName === 'keranjang') paksaModeRitel(); // keranjang = alur pesanan ritel; pesanan grosir lewat RFQ
     const isAdminPage = ADMIN_PAGES.includes(pageName);
     document.body.classList.toggle('admin-mode', isAdminPage);
     document.getElementById('adminSidebar').classList.toggle('hidden', !isAdminPage);
@@ -123,6 +122,7 @@ function navigateTo(pageName, options) {
         adminFlyer: renderAdminFlyerPage,
         adminMitra: renderAdminMitraPage,
         adminUmkm: renderAdminUmkmPage,
+        adminPesanan: renderAdminPesananPage,
         adminPembayaran: renderAdminPembayaranPage,
         adminRfq: renderAdminRfqPage,
         adminSettings: renderAdminSettingsPage

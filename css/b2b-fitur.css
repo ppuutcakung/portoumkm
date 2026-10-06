@@ -174,3 +174,23 @@ body.admin-mode .pu-mode-strip { display: none; }
 .pf-badge-mode { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
 .pf-badge-b2c { background: #e2e8f0; color: #334155; }
 .pf-badge-b2b { background: #e0f2fe; color: #075985; }
+
+/* ---------- TAG CEPAT (otomatis dari sub-kategori) ---------- */
+.tag-quick.active { background: var(--pu-accent, var(--primary)); border-color: var(--pu-accent, var(--primary)); color: var(--pu-on, #fff); }
+.tag-quick .tag-quick-n { opacity: .65; font-size: 10px; margin-left: 2px; }
+
+/* ---------- WIDGET RINGKASAN (Monitoring Pembayaran & Pesanan) ---------- */
+.pu-stat-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
+@media (min-width: 640px) { .pu-stat-grid { grid-template-columns: repeat(3, 1fr); } }
+.pu-stat { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; }
+.pu-stat-ico { width: 40px; height: 40px; flex: none; border-radius: 10px; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.pu-stat-label { font-size: 11px; color: #64748b; font-weight: 600; }
+.pu-stat-nilai { font-size: 18px; font-weight: 800; line-height: 1.25; }
+.pu-stat-sub { font-size: 11px; color: #94a3b8; }
+.pu-mode-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 4px; }
+.pu-mode-b2c { background: #e2e8f0; color: #334155; }
+.pu-mode-b2b { background: #e0f2fe; color: #075985; }
+/* ---------- PILIH PAKET DI POPUP DETAIL ---------- */
+.pu-paket { margin-top: 14px; border-radius: 10px; }
+.pu-paket.pu-invalid { outline: 2px solid #dc2626; outline-offset: 4px; }
+.pu-paket-menu { display: none; margin-top: 6px; font-size: 12px; color: var(--text-muted); background: var(--pu-tint); border-radius: 8px; padding: 6px 10px; }

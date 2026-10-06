@@ -232,6 +232,193 @@ function gambarDokumenRfq(pdf, doc, foto, opsi) {
     }
 }
 
+// -------------------- INVOICE PESANAN --------------------
+/** Ubah satu baris pesanan (beserta itemnya) menjadi isi dokumen invoice. */
+function susunDokumenInvoice(p) {
+    const mode = p.mode || 'b2c';
+    const b2b = mode === 'b2b';
+    const nomor = p.nomor || ('INV-' + String(p.id || '').slice(0, 8).toUpperCase());
+    const items = (Array.isArray(p.items) ? p.items : []).map(function(i) {
+        const qty = Number(i.qty) || 0, harga = Number(i.harga_satuan) || 0;
+        return {
+            nama: i.nama_produk || '-',
+            ket: [i.nama_umkm || '', i.warna ? ('Warna: ' + i.warna) : '', i.catatan || ''].filter(Boolean).join(' | '),
+            qty: qty + (i.satuan ? ' ' + i.satuan : ''),
+            harga: rupiahPdf(harga),
+            subtotal: rupiahPdf(harga * qty),
+            nilai: harga * qty
+        };
+    });
+    const jumlahItem = items.reduce(function(a, b) { return a + b.nilai; }, 0);
+    const total = (p.total_estimasi !== null && p.total_estimasi !== undefined && p.total_estimasi !== '') ? Number(p.total_estimasi) : jumlahItem;
+    const pemesan = [];
+    if (b2b) pemesan.push(['Nama Perusahaan', p.nama_perusahaan || '-']);
+    pemesan.push([b2b ? 'PIC / Pemesan' : 'Nama Pemesan', p.nama_pemesan || '-']);
+    pemesan.push(['Nomor WhatsApp / HP', p.no_hp || '-']);
+    pemesan.push(['Alamat Penerima', p.alamat_kirim || '-']);
+    return {
+        judul: 'INVOICE PESANAN',
+        nomor: nomor,
+        namaFile: 'Invoice-' + nomor.replace(/[^A-Za-z0-9_-]/g, '') + '.pdf',
+        tanggal: tanggalIndo(p.created_at),
+        jenis: b2b ? 'B2B Grosir' : 'B2C Ritel',
+        status: p.status_bayar || 'Belum Bayar',
+        pemesan: pemesan,
+        pengiriman: [
+            ['Tanggal Dikirim', p.tanggal_kirim ? tanggalDateIndo(p.tanggal_kirim) : '-'],
+            ['Maksimal Jam Sampai', p.jam_maksimal || '-']
+        ],
+        items: items,
+        total: rupiahPdf(total),
+        selisih: Math.abs(total - jumlahItem) > 0.5 ? rupiahPdf(jumlahItem) : '',
+        catatan: p.catatan || '-',
+        namaTtd: p.nama_pemesan || ''
+    };
+}
+/** Gambar invoice: kop, data pemesan, pengiriman, tabel item, total, catatan, tanda tangan. */
+function gambarDokumenInvoice(pdf, doc, opsi) {
+    opsi = opsi || {};
+    const aksen = opsi.aksen || '#0284c7';
+    const namaApp = bersihkanTeksPdf(opsi.namaApp || 'PortoUMKM');
+    const GELAP = '#0f172a', TEKS = '#111827', REDUP = '#6b7280', GARIS = '#d1d5db', MUDA = '#f3f4f6', PUTIH = '#ffffff';
+    const M = 15, CW = pdf.lebar - 2 * M, BAWAH = pdf.tinggi - 22, LH = 4.5;
+    let y = 0;
+    function teksKanan(s, xKanan, yy) { pdf.teks(s, xKanan - pdf.lebarTeks(s), yy); }
+    function kepalaPertama() {
+        pdf.warnaIsi(GELAP); pdf.kotak(0, 0, pdf.lebar, 32, 'F');
+        pdf.warnaIsi(aksen); pdf.kotak(0, 32, pdf.lebar, 2.2, 'F');
+        pdf.font('bold', 16); pdf.warnaTeks(PUTIH); pdf.teks(bersihkanTeksPdf(doc.judul), M, 14);
+        pdf.font('normal', 8.5); pdf.warnaTeks('#cbd5e1'); pdf.teks(bersihkanTeksPdf(namaApp + ' - Katalog Digital UMKM Binaan PPU UT Cakung'), M, 21);
+        pdf.font('normal', 7.5); pdf.warnaTeks('#94a3b8'); teksKanan('NO. PESANAN', pdf.lebar - M, 11);
+        pdf.font('bold', 12); pdf.warnaTeks(PUTIH); teksKanan(bersihkanTeksPdf(doc.nomor), pdf.lebar - M, 18);
+        y = 42;
+        [['TANGGAL PESAN', doc.tanggal], ['JALUR PESANAN', doc.jenis], ['STATUS BAYAR', doc.status]].forEach(function(c, i) {
+            const x = M + i * 60;
+            pdf.font('normal', 7.5); pdf.warnaTeks(REDUP); pdf.teks(c[0], x, y);
+            pdf.font('bold', 10); pdf.warnaTeks(TEKS); pdf.teks(bersihkanTeksPdf(c[1]), x, y + 5.5);
+        });
+        y += 11;
+        pdf.warnaGaris(GARIS); pdf.tebalGaris(0.3); pdf.garis(M, y, M + CW, y);
+        y += 6;
+    }
+    function kepalaRingkas() {
+        pdf.font('bold', 8.5); pdf.warnaTeks(GELAP); pdf.teks(bersihkanTeksPdf(doc.nomor + '   |   ' + doc.judul), M, 12);
+        pdf.warnaGaris(aksen); pdf.tebalGaris(0.6); pdf.garis(M, 15, M + CW, 15);
+        y = 22;
+    }
+    function pastikanRuang(t) { if (y + t > BAWAH) { pdf.halamanBaru(); kepalaRingkas(); } }
+    function bagian(judul) {
+        pastikanRuang(18);
+        pdf.warnaIsi(MUDA); pdf.kotak(M, y, CW, 7, 'F');
+        pdf.warnaIsi(aksen); pdf.kotak(M, y, 1.6, 7, 'F');
+        pdf.font('bold', 9.5); pdf.warnaTeks(GELAP); pdf.teks(bersihkanTeksPdf(judul), M + 4.5, y + 4.9);
+        y += 10;
+    }
+    function barisLabel(rows, labelW) {
+        rows.forEach(function(r) {
+            pdf.font('normal', 8.5);
+            const lab = bungkusTeks(pdf, bersihkanTeksPdf(r[0]), labelW - 3);
+            pdf.font('normal', 9.5);
+            const nil = bungkusTeks(pdf, bersihkanTeksPdf(r[1]), CW - labelW - 2);
+            const h = Math.max(lab.length, nil.length) * LH + 3.2;
+            pastikanRuang(h);
+            pdf.font('normal', 8.5); pdf.warnaTeks(REDUP);
+            lab.forEach(function(l, i) { pdf.teks(l, M + 1, y + 4.6 + i * LH); });
+            pdf.font('normal', 9.5); pdf.warnaTeks(TEKS);
+            nil.forEach(function(l, i) { pdf.teks(l, M + labelW, y + 4.6 + i * LH); });
+            y += h;
+            pdf.warnaGaris(GARIS); pdf.tebalGaris(0.2); pdf.garis(M, y, M + CW, y);
+        });
+        y += 5;
+    }
+    // kolom tabel item: Produk | Qty | Harga | Subtotal
+    const WQ = 24, WH = 30, WS = 32, WP = CW - WQ - WH - WS;
+    const XQ = M + WP, XH = XQ + WQ, XS = XH + WH;
+    function kepalaTabelItem() {
+        pastikanRuang(10);
+        pdf.font('bold', 8); pdf.warnaTeks(REDUP);
+        pdf.teks('PRODUK', M + 1, y + 4);
+        pdf.teks('QTY', XQ + 1, y + 4);
+        teksKanan('HARGA', XH + WH - 1, y + 4);
+        teksKanan('SUBTOTAL', XS + WS - 1, y + 4);
+        y += 6;
+        pdf.warnaGaris(GARIS); pdf.tebalGaris(0.3); pdf.garis(M, y, M + CW, y);
+        y += 1.5;
+    }
+
+    kepalaPertama();
+    bagian('A. DATA PEMESAN');
+    barisLabel(doc.pemesan, 50);
+    bagian('B. PENGIRIMAN');
+    barisLabel(doc.pengiriman, 50);
+    bagian('C. RINCIAN PESANAN');
+    kepalaTabelItem();
+    if (!doc.items.length) {
+        pdf.font('normal', 9); pdf.warnaTeks(REDUP);
+        pdf.teks('Rincian item tidak tersedia.', M + 1, y + 4.5);
+        y += 8;
+    }
+    doc.items.forEach(function(it) {
+        pdf.font('normal', 9);
+        const nama = bungkusTeks(pdf, bersihkanTeksPdf(it.nama), WP - 3);
+        pdf.font('normal', 7.5);
+        const ket = it.ket ? bungkusTeks(pdf, bersihkanTeksPdf(it.ket), WP - 3) : [];
+        const h = nama.length * LH + ket.length * 3.6 + 3.5;
+        pastikanRuang(h + 2);
+        pdf.font('normal', 9); pdf.warnaTeks(TEKS);
+        nama.forEach(function(l, i) { pdf.teks(l, M + 1, y + 4.4 + i * LH); });
+        pdf.font('normal', 7.5); pdf.warnaTeks(REDUP);
+        ket.forEach(function(l, i) { pdf.teks(l, M + 1, y + 4.4 + nama.length * LH + i * 3.6); });
+        pdf.font('normal', 9); pdf.warnaTeks(TEKS);
+        pdf.teks(bersihkanTeksPdf(it.qty), XQ + 1, y + 4.4);
+        teksKanan(it.harga, XH + WH - 1, y + 4.4);
+        pdf.font('bold', 9);
+        teksKanan(it.subtotal, XS + WS - 1, y + 4.4);
+        y += h;
+        pdf.warnaGaris(GARIS); pdf.tebalGaris(0.2); pdf.garis(M, y, M + CW, y);
+    });
+    // total
+    pastikanRuang(16);
+    y += 2;
+    pdf.warnaIsi(MUDA); pdf.kotak(XQ, y, CW - WP, 10, 'F');
+    pdf.font('bold', 10); pdf.warnaTeks(GELAP); pdf.teks('TOTAL', XQ + 2, y + 6.6);
+    pdf.font('bold', 12); pdf.warnaTeks(aksen); teksKanan(doc.total, M + CW - 1, y + 6.8);
+    y += 13;
+    if (doc.selisih) {
+        pdf.font('normal', 7.5); pdf.warnaTeks(REDUP);
+        pdf.teks('Catatan: total pesanan disesuaikan Admin. Jumlah rincian item: ' + doc.selisih + '.', M, y + 3);
+        y += 7;
+    }
+    bagian('D. CATATAN TAMBAHAN');
+    pdf.font('normal', 9.5);
+    bungkusTeks(pdf, bersihkanTeksPdf(doc.catatan), CW - 2).forEach(function(l) {
+        pastikanRuang(LH + 2);
+        pdf.font('normal', 9.5); pdf.warnaTeks(TEKS);
+        pdf.teks(l, M + 1, y + 3.6);
+        y += LH;
+    });
+    y += 6;
+    // tanda tangan
+    pastikanRuang(36);
+    const bw = (CW - 12) / 2;
+    [['Pemesan', doc.namaTtd ? bersihkanTeksPdf(doc.namaTtd) : '(nama jelas)'], ['Admin / Penerima Pesanan', 'Admin ' + namaApp]].forEach(function(t, i) {
+        const x = M + i * (bw + 12);
+        pdf.font('bold', 8.5); pdf.warnaTeks(GELAP); pdf.teks(t[0], x, y + 3);
+        pdf.warnaGaris(REDUP); pdf.tebalGaris(0.3); pdf.garis(x, y + 27, x + bw, y + 27);
+        pdf.font('normal', 8.5); pdf.warnaTeks(REDUP); pdf.teks(t[1], x, y + 31.5);
+    });
+    y += 36;
+    const n = pdf.jumlahHalaman();
+    for (let i = 1; i <= n; i++) {
+        pdf.keHalaman(i);
+        pdf.warnaGaris(GARIS); pdf.tebalGaris(0.3); pdf.garis(M, pdf.tinggi - 17, M + CW, pdf.tinggi - 17);
+        pdf.font('normal', 7); pdf.warnaTeks(REDUP);
+        pdf.teks('Dokumen dibuat otomatis oleh sistem ' + namaApp + '. Total bersifat estimasi; ongkos kirim dan penyesuaian lain dikonfirmasi Admin.', M, pdf.tinggi - 12.5);
+        pdf.teks('Simpan dokumen ini sebagai bukti pesanan Anda.', M, pdf.tinggi - 9);
+        pdf.font('bold', 7.5); pdf.warnaTeks(GELAP); teksKanan('Halaman ' + i + ' / ' + n, M + CW, pdf.tinggi - 12.5);
+    }
+}
+
 // -------------------- 3. ADAPTOR jsPDF + PEMUAT --------------------
 /** Adaptor tipis: semua satuan dalam milimeter, titik (0,0) di kiri-ATAS halaman. */
 function buatAdapterJsPdf(JsPDF) {
@@ -333,6 +520,25 @@ async function unduhPdfRfq(r) {
         showToast('Berhasil', 'PDF ' + doc.nomor + ' diunduh.' + (fotoUrl && !foto ? ' Foto produk tidak bisa dimuat, jadi dokumen dibuat tanpa foto.' : ''), 'success');
     } catch (e) {
         console.error('unduhPdfRfq gagal:', e);
+        showToast('Gagal membuat PDF', e && e.message ? e.message : String(e), 'danger');
+    }
+}
+
+/** Dipanggil tombol Invoice di halaman Admin Monitoring Pesanan. */
+async function unduhInvoicePesanan(p) {
+    showToast('Membuat PDF', 'Mohon tunggu sebentar...', 'info');
+    try {
+        const JsPDF = await muatJsPdf();
+        const pdf = buatAdapterJsPdf(JsPDF);
+        const doc = susunDokumenInvoice(p);
+        gambarDokumenInvoice(pdf, doc, {
+            aksen: normalisasiHex((AppState.config || {}).warnaB2b) || '#0284c7',
+            namaApp: (AppState.config || {}).appName || 'PortoUMKM'
+        });
+        pdf.simpan(doc.namaFile);
+        showToast('Berhasil', 'Invoice ' + doc.nomor + ' diunduh.', 'success');
+    } catch (e) {
+        console.error('unduhInvoicePesanan gagal:', e);
         showToast('Gagal membuat PDF', e && e.message ? e.message : String(e), 'danger');
     }
 }

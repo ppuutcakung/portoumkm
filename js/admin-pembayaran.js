@@ -9,6 +9,7 @@ function renderAdminPembayaranPage() {
     container.innerHTML = adminPageShell('Monitoring Pembayaran', [
       '<p class="text-sm mb-3" style="color:var(--text-muted)">Pantau status pembayaran pesanan yang masuk dari customer (semacam monitoring piutang).</p>',
       '<div class="flex flex-wrap gap-2 mb-3" id="pembayaranFilterTabs"></div>',
+      '<div id="pembayaranRingkas" class="pu-stat-grid"></div>',
       '<div class="table-wrap">',
       '<table class="data-table">',
       '<thead><tr><th>UMKM</th><th>Produk</th><th>Tanggal Dipesan</th><th>Customer</th><th>No. HP</th><th>Total</th><th>Konfirmasi</th><th></th></tr></thead>',
@@ -49,7 +50,28 @@ function renderPembayaranFilterTabs(active) {
     if (active === 'Belum Bayar') items = adminPembayaranCache.filter(function(p) { return p.status_bayar !== 'Sudah Bayar'; });
     renderPembayaranTable(items);
 }
+/** Widget ringkasan nilai pesanan di atas tabel (mengikuti filter yang sedang aktif). */
+function renderRingkasBayar(items) {
+    const el = document.getElementById('pembayaranRingkas');
+    if (!el) return;
+    const n = function(x) { return Number(x && x.total_estimasi) || 0; };
+    const total = items.reduce(function(a, b) { return a + n(b); }, 0);
+    const lunas = items.filter(function(x) { return x.status_bayar === 'Lunas'; });
+    const belum = items.filter(function(x) { return x.status_bayar !== 'Lunas'; });
+    const kartu = [
+        { label: 'Total Nilai Pesanan', nilai: total, jml: items.length, warna: '#0f172a', ikon: 'bi-receipt' },
+        { label: 'Sudah Dibayar', nilai: lunas.reduce(function(a, b) { return a + n(b); }, 0), jml: lunas.length, warna: '#16a34a', ikon: 'bi-check-circle' },
+        { label: 'Belum Dibayar', nilai: belum.reduce(function(a, b) { return a + n(b); }, 0), jml: belum.length, warna: '#dc2626', ikon: 'bi-hourglass-split' }
+    ];
+    el.innerHTML = kartu.map(function(k) {
+        return '<div class="pu-stat"><div class="pu-stat-ico" style="background:' + k.warna + '"><i class="bi ' + k.ikon + '"></i></div>' +
+               '<div><div class="pu-stat-label">' + k.label + '</div>' +
+               '<div class="pu-stat-nilai" style="color:' + k.warna + '">' + formatRupiah(k.nilai) + '</div>' +
+               '<div class="pu-stat-sub">' + k.jml + ' pesanan</div></div></div>';
+    }).join('');
+}
 function renderPembayaranTable(items) {
+    renderRingkasBayar(items);
     const tbody = document.getElementById('pembayaranTbody');
     if (!items || !items.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4" style="color:var(--text-muted)">Belum ada pesanan.</td></tr>';
