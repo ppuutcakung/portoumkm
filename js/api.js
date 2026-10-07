@@ -37,11 +37,26 @@ async function dbSelect(table, opts) {
 }
 
 /** Tambah 1 baris baru, kembalikan baris yang baru dibuat (termasuk ID-nya). */
+/**
+ * Pesan yang mudah dipahami saat perintah berhasil dikirim tetapi TIDAK ADA baris
+ * yang terkena. Penyebab paling sering: sesi Admin sudah berakhir, sehingga aturan
+ * keamanan database menolak perubahan tanpa memunculkan pesan error tersendiri.
+ */
+async function pesanTanpaBaris(aksi) {
+    const sesi = await authGetSession();
+    if (!sesi) {
+        AppState.session = null;
+        return 'Sesi Admin sudah berakhir sehingga perubahan ditolak. Silakan logout lalu login kembali, baru simpan ulang.';
+    }
+    return 'Tidak ada data yang ' + aksi + '. Kemungkinan datanya sudah dihapus dari perangkat lain, atau akun Anda belum terdaftar sebagai Admin. Muat ulang halaman lalu coba lagi.';
+}
+
 async function dbInsert(table, record) {
     try {
-        const { data, error } = await supabaseClient.from(table).insert(record).select().single();
+        const { data, error } = await supabaseClient.from(table).insert(record).select();
         if (error) return { success: false, data: null, message: error.message };
-        return { success: true, data: data, message: 'Data berhasil ditambahkan.' };
+        if (!data || !data.length) return { success: false, data: null, message: await pesanTanpaBaris('ditambahkan') };
+        return { success: true, data: data[0], message: 'Data berhasil ditambahkan.' };
     } catch (err) {
         return { success: false, data: null, message: 'Gagal terhubung ke server: ' + err.message };
     }
@@ -50,9 +65,10 @@ async function dbInsert(table, record) {
 /** Ubah 1 baris berdasarkan ID, kembalikan baris yang sudah diperbarui. */
 async function dbUpdate(table, id, record) {
     try {
-        const { data, error } = await supabaseClient.from(table).update(record).eq('id', id).select().single();
+        const { data, error } = await supabaseClient.from(table).update(record).eq('id', id).select();
         if (error) return { success: false, data: null, message: error.message };
-        return { success: true, data: data, message: 'Data berhasil diperbarui.' };
+        if (!data || !data.length) return { success: false, data: null, message: await pesanTanpaBaris('diperbarui') };
+        return { success: true, data: data[0], message: 'Data berhasil diperbarui.' };
     } catch (err) {
         return { success: false, data: null, message: 'Gagal terhubung ke server: ' + err.message };
     }

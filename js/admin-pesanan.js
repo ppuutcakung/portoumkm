@@ -16,7 +16,7 @@ function sudahBayar(p) { return p.status_bayar === 'Sudah Bayar'; }
 function renderAdminPesananPage() {
     const container = document.getElementById('app-container');
     container.innerHTML = adminPageShell('Monitoring Pesanan', [
-      '<p class="text-sm mb-3" style="color:var(--text-muted)">Rekap seluruh pembelian dari etalase B2C Ritel maupun B2B Grosir. Pengajuan RFQ tidak dimasukkan ke sini karena belum berupa pembelian; lihat menu B2B untuk RFQ.</p>',
+      '<p class="text-sm mb-3" style="color:var(--text-muted)">Rekap seluruh pembelian dari etalase B2C Ritel maupun B2B Grosir. Hanya pesanan yang <b>sudah dikonfirmasi</b> Admin yang muncul di sini; pesanan baru menunggu di menu Konfirmasi Pesanan. Pengajuan RFQ ada di menu B2B.</p>',
       '<div id="pesananRingkas" class="pu-stat-grid"></div>',
       '<div class="flex flex-wrap gap-2 mb-2" id="pesananModeChips"></div>',
       '<div class="flex flex-wrap gap-2 mb-3" id="pesananStatusChips"></div>',

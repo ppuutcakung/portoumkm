@@ -14,7 +14,7 @@ const JENIS_RFQ = ['RFQ', 'Sampel', 'Kustom'];
 function renderAdminRfqPage() {
     const container = document.getElementById('app-container');
     container.innerHTML = adminPageShell('B2B: RFQ &amp; Permintaan Sampel', [
-      '<p class="text-sm mb-3" style="color:var(--text-muted)">Pengajuan penawaran (RFQ), permintaan paket sampel, dan RFQ kustom dari customer mode B2B Grosir. Klik ikon PDF untuk mengunduh dokumen terstandar lengkap dengan foto produk.</p>',
+      '<p class="text-sm mb-3" style="color:var(--text-muted)">Pengajuan yang <b>sudah dikonfirmasi</b> Admin. Pengajuan baru menunggu di menu Konfirmasi Pesanan. Klik ikon PDF untuk mengunduh dokumen terstandar lengkap dengan foto produk.</p>',
       '<div class="flex flex-wrap gap-2 mb-2" id="rfqJenisChips"></div>',
       '<div class="flex flex-wrap gap-2 mb-3" id="rfqFilterChips"></div>',
       '<div class="table-wrap">',
@@ -31,7 +31,7 @@ function renderAdminRfqPage() {
 function loadAdminRfq() {
     const cached = ambilDariCache('adminRfqList');
     if (cached) { adminRfqCache = cached; renderRfqTabel(); return; }
-    dbSelect('rfq', { order: 'created_at', ascending: false }).then(function(res) {
+    dbSelect('rfq', { eq: { status_konfirmasi: 'Dikonfirmasi' }, order: 'created_at', ascending: false }).then(function(res) {
         adminRfqCache = res.success ? res.data : [];
         if (!res.success) showToast('Error', res.message, 'danger');
         simpanKeCache('adminRfqList', adminRfqCache);

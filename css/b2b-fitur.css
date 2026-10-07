@@ -330,3 +330,67 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
     .data-table.pu-tabel-hp tr:first-child td:first-child { padding-top: 0; }
     .table-wrap:has(.pu-tabel-hp) { overflow-x: visible; }
 }
+
+/* ============================================================
+   POPUP FLYER PROMO (rasio 1:1, bergulir otomatis)
+   ============================================================ */
+.modal-box.pu-promo-box {
+    width: min(440px, 92vw); max-width: 440px; padding: 0;
+    background: transparent; border: 0; box-shadow: none; overflow: visible;
+}
+#popupPromoBody { position: relative; }
+.pu-promo-bingkai {
+    position: relative; width: 100%; aspect-ratio: 1 / 1;
+    border-radius: 16px; overflow: hidden; background: #0f172a;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, .35);
+}
+.pu-promo-slide { position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease; pointer-events: none; }
+.pu-promo-slide.aktif { opacity: 1; pointer-events: auto; }
+.pu-promo-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pu-promo-tutup {
+    position: absolute; top: -14px; right: -14px; z-index: 5;
+    width: 38px; height: 38px; border-radius: 50%; border: 0;
+    background: #fff; color: #0f172a; cursor: pointer; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, .3);
+}
+.pu-promo-tutup:hover { background: #f1f5f9; }
+.pu-promo-dots { display: flex; justify-content: center; gap: 7px; margin-top: 12px; }
+.pu-promo-dot {
+    width: 9px; height: 9px; padding: 0; border-radius: 50%; cursor: pointer;
+    border: 0; background: rgba(255, 255, 255, .55);
+}
+.pu-promo-dot.aktif { background: #fff; width: 22px; border-radius: 999px; }
+.pu-promo-lanjut {
+    display: block; width: 100%; margin-top: 12px; height: 42px;
+    background: #fff; border-color: #fff;
+}
+@media (max-width: 720px) {
+    .modal-box.pu-promo-box { width: calc(100vw - 36px); max-width: calc(100vw - 36px); }
+    .pu-promo-tutup { top: -12px; right: -8px; width: 34px; height: 34px; }
+}
+
+/* ============================================================
+   KONFIRMASI PESANAN (antrean kartu + lencana angka di menu)
+   ============================================================ */
+.pu-lencana {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; padding: 0 6px; margin-left: auto;
+    border-radius: 999px; background: #dc2626; color: #fff;
+    font-size: 11px; font-weight: 800; line-height: 1;
+}
+.pu-antri-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 900px) { .pu-antri-grid { grid-template-columns: repeat(2, 1fr); } }
+.pu-antri-kartu { border: 1px solid #e2e8f0; border-left: 4px solid #d97706; border-radius: 12px; padding: 14px; background: #fff; }
+.pu-antri-kepala { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.pu-antri-nomor { font-size: 13px; font-weight: 800; color: #0f172a; }
+.pu-antri-waktu { margin-left: auto; font-size: 11px; color: #94a3b8; }
+.pu-antri-baris { display: flex; gap: 10px; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9; font-size: 12px; }
+.pu-antri-baris > span { color: #64748b; flex: none; max-width: 42%; }
+.pu-antri-baris > b { color: #0f172a; text-align: right; font-weight: 600; white-space: pre-line; }
+.pu-antri-item { margin-top: 10px; background: #f8fafc; border-radius: 8px; padding: 8px 10px; }
+.pu-antri-item ul { margin: 0; padding-left: 18px; font-size: 12px; color: #334155; }
+.pu-antri-item li + li { margin-top: 4px; }
+.pu-antri-total { margin-top: 8px; text-align: right; font-size: 13px; color: #334155; }
+.pu-antri-aksi { display: flex; gap: 8px; margin-top: 12px; }
+.pu-antri-aksi > button { flex: 1; height: 40px; }

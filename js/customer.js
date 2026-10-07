@@ -36,6 +36,84 @@ function pantauJudulHero() {
 
 /**
  * ============================================================
+ * POPUP FLYER PROMO
+ * Muncul sekali saat customer pertama kali membuka aplikasi. Isinya flyer
+ * yang ditandai Admin (maksimal 3), bergulir otomatis, dan bisa ditutup.
+ * ============================================================
+ */
+const POPUP_PROMO_KEY = 'portoumkm_popup_promo';
+const POPUP_PROMO_MAKS = 3;
+const POPUP_PROMO_JEDA = 4000;
+let popupPromoItems = [];
+let popupPromoIdx = 0;
+let popupPromoTimer = null;
+
+/** Sudah pernah ditampilkan pada sesi peramban ini? */
+function popupPromoSudahTampil() {
+    try { return sessionStorage.getItem(POPUP_PROMO_KEY) === '1'; } catch (e) { return false; }
+}
+function tandaiPopupPromoTampil() {
+    try { sessionStorage.setItem(POPUP_PROMO_KEY, '1'); } catch (e) { /* aman diabaikan */ }
+}
+/** Dipanggil saat aplikasi pertama kali dibuka. */
+function cekPopupPromo() {
+    if (popupPromoSudahTampil()) return;
+    dbSelect('flyer_promo', { eq: { status: 'Aktif', tampil_popup: true }, order: 'urutan', limit: POPUP_PROMO_MAKS }).then(function(res) {
+        const items = (res.success ? res.data : []).filter(function(f) { return f.gambar_url; }).slice(0, POPUP_PROMO_MAKS);
+        if (!items.length) return;          // tidak ada flyer popup: jangan ganggu customer
+        tandaiPopupPromoTampil();
+        tampilkanPopupPromo(items);
+    });
+}
+function tampilkanPopupPromo(items) {
+    popupPromoItems = items;
+    popupPromoIdx = 0;
+    const banyak = items.length > 1;
+    document.getElementById('popupPromoBody').innerHTML = [
+      '<button type="button" class="pu-promo-tutup" onclick="tutupPopupPromo()" aria-label="Tutup"><i class="bi bi-x-lg"></i></button>',
+      '<div class="pu-promo-bingkai">',
+      items.map(function(f, i) {
+          const gbr = '<img src="' + escapeAttr(f.gambar_url) + '" alt="' + escapeAttr(f.judul || 'Promo') + '" loading="lazy">';
+          return '<div class="pu-promo-slide' + (i === 0 ? ' aktif' : '') + '" data-slide="' + i + '">' + gbr + '</div>';
+      }).join(''),
+      '</div>',
+      banyak ? ('<div class="pu-promo-dots">' + items.map(function(f, i) {
+          return '<button type="button" class="pu-promo-dot' + (i === 0 ? ' aktif' : '') + '" onclick="keSlidePromo(' + i + ')" aria-label="Promo ' + (i + 1) + '"></button>';
+      }).join('') + '</div>') : '',
+      '<button type="button" class="btn-ghost pu-promo-lanjut" onclick="tutupPopupPromo()">Lanjut Belanja</button>'
+    ].join('');
+    openModal('popupPromoModal');
+    if (banyak) mulaiGulirPromo();
+}
+function gambarSlidePromo() {
+    document.querySelectorAll('#popupPromoBody .pu-promo-slide').forEach(function(el, i) {
+        el.classList.toggle('aktif', i === popupPromoIdx);
+    });
+    document.querySelectorAll('#popupPromoBody .pu-promo-dot').forEach(function(el, i) {
+        el.classList.toggle('aktif', i === popupPromoIdx);
+    });
+}
+function mulaiGulirPromo() {
+    clearInterval(popupPromoTimer);
+    popupPromoTimer = setInterval(function() {
+        popupPromoIdx = (popupPromoIdx + 1) % popupPromoItems.length;
+        gambarSlidePromo();
+    }, POPUP_PROMO_JEDA);
+}
+/** Klik titik: pindah slide dan hitung ulang jedanya agar tidak langsung berganti. */
+function keSlidePromo(i) {
+    popupPromoIdx = i;
+    gambarSlidePromo();
+    mulaiGulirPromo();
+}
+function tutupPopupPromo() {
+    clearInterval(popupPromoTimer);
+    popupPromoTimer = null;
+    closeModal('popupPromoModal');
+}
+
+/**
+ * ============================================================
  * PortoUMKM - Halaman Customer: Beranda, Semua Produk,
  * Detail Produk, Mitra Pemasaran
  * ============================================================

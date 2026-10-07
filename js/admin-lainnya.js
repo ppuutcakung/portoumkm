@@ -166,19 +166,33 @@ function hapusFlyerById(id) {
 function openFlyerForm(f) {
     f = f || {};
     document.getElementById('previewModalTitle').textContent = f.id ? 'Edit Flyer' : 'Unggah Flyer Baru';
-    document.getElementById('previewModalContent').innerHTML = ('\n    <form id="flyerForm" class="text-left" onsubmit="submitFlyerForm(event)">\n      <input type="hidden" id="ffId" value="' + (f.id || '') + '">\n      <div class="form-group"><label class="form-label">Judul *</label><input class="form-input" id="ffJudul" required value="' + (escapeAttr(f.judul || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Jenis</label>\n        <select class="form-select" id="ffJenis">\n          <option ' + (f.jenis === 'Event Besar' ? 'selected' : '') + '>Event Besar</option>\n          <option ' + (f.jenis === 'Promo' ? 'selected' : '') + '>Promo</option>\n          <option ' + (f.jenis === 'Umum' ? 'selected' : '') + '>Umum</option>\n        </select>\n      </div>\n      <div class="form-group"><label class="form-label">Status</label>\n        <select class="form-select" id="ffStatus"><option ' + (f.status === 'Aktif' ? 'selected' : '') + '>Aktif</option><option ' + (f.status === 'Nonaktif' ? 'selected' : '') + '>Nonaktif</option></select>\n      </div>\n      <div class="form-group">\n        <label class="form-label">Gambar Flyer</label>\n        <input class="form-input" type="file" id="ffGambar" accept="image/*">\n        <p class="text-xs mt-1" style="color:var(--text-muted)">Ukuran disarankan: 1600 x 320 px (rasio 5:1, persegi panjang lebar).</p>\n        <input type="hidden" id="ffGambarURL" value="' + (f.gambar_url || '') + '">\n        <input type="hidden" id="ffGambarPath" value="' + (f.gambar_path || '') + '">\n      </div>\n      <button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-check-lg"></i> Simpan Flyer</button>\n    </form>\n  ');
+    document.getElementById('previewModalContent').innerHTML = ('\n    <form id="flyerForm" class="text-left" onsubmit="submitFlyerForm(event)">\n      <input type="hidden" id="ffId" value="' + (f.id || '') + '">\n      <div class="form-group"><label class="form-label">Judul *</label><input class="form-input" id="ffJudul" required value="' + (escapeAttr(f.judul || '')) + '"></div>\n      <div class="form-group"><label class="form-label">Jenis</label>\n        <select class="form-select" id="ffJenis">\n          <option ' + (f.jenis === 'Event Besar' ? 'selected' : '') + '>Event Besar</option>\n          <option ' + (f.jenis === 'Promo' ? 'selected' : '') + '>Promo</option>\n          <option ' + (f.jenis === 'Umum' ? 'selected' : '') + '>Umum</option>\n        </select>\n      </div>\n      <div class="form-group"><label class="form-label">Status</label>\n        <select class="form-select" id="ffStatus"><option ' + (f.status === 'Aktif' ? 'selected' : '') + '>Aktif</option><option ' + (f.status === 'Nonaktif' ? 'selected' : '') + '>Nonaktif</option></select>\n      </div>\n      <div class="pf-section">\n        <div class="pf-section-title">Popup saat aplikasi dibuka</div>\n        <label class="pf-cek"><input type="checkbox" id="ffPopup" ' + (f.tampil_popup ? 'checked' : '') + '> Tampilkan flyer ini sebagai popup</label>\n        <p class="pf-foto-info">Maksimal 3 flyer. Kalau lebih dari satu, popupnya bergulir otomatis. Popup muncul sekali tiap kali customer membuka aplikasi, dan bisa ditutup.</p>\n        <div class="form-group" style="margin:8px 0 0;"><label class="form-label">Urutan Tampil</label><input class="form-input" type="number" min="1" id="ffUrutan" value="' + (f.urutan || 1) + '" style="width:110px;"></div>\n      </div>\n      <div class="form-group">\n        <label class="form-label">Gambar Flyer</label>\n        <input class="form-input" type="file" id="ffGambar" accept="image/*">\n        <p class="text-xs mt-1" style="color:var(--text-muted)">Ukuran disarankan: 1600 x 320 px (rasio 5:1, persegi panjang lebar).</p>\n        <p class="text-xs mt-1" style="color:#b45309;">Khusus flyer yang dicentang sebagai popup, pakai gambar PERSEGI (1:1), misalnya 1000 x 1000 px.</p>\n        <input type="hidden" id="ffGambarURL" value="' + (f.gambar_url || '') + '">\n        <input type="hidden" id="ffGambarPath" value="' + (f.gambar_path || '') + '">\n      </div>\n      <button type="submit" class="btn-primary w-full" style="height:42px;"><i class="bi bi-check-lg"></i> Simpan Flyer</button>\n    </form>\n  ');
     openModal('previewModal');
 }
-function submitFlyerForm(e) {
+async function submitFlyerForm(e) {
     e.preventDefault();
     const record = {
         judul: document.getElementById('ffJudul').value.trim(),
         jenis: document.getElementById('ffJenis').value,
         status: document.getElementById('ffStatus').value,
         gambar_url: document.getElementById('ffGambarURL').value,
-        gambar_path: document.getElementById('ffGambarPath').value
+        gambar_path: document.getElementById('ffGambarPath').value,
+        tampil_popup: document.getElementById('ffPopup').checked,
+        urutan: Math.max(1, parseInt(document.getElementById('ffUrutan').value, 10) || 1)
     };
     const flyerId = document.getElementById('ffId').value || null;
+    // Maksimal 3 flyer popup: dihitung dari data terbaru, bukan dari cache,
+    // supaya tetap benar walau Admin membuka aplikasi di dua perangkat.
+    if (record.tampil_popup && record.status === 'Aktif') {
+        const cek = await dbSelect('flyer_promo', { eq: { status: 'Aktif', tampil_popup: true } });
+        if (cek.success) {
+            const lain = cek.data.filter(function(x) { return x.id !== flyerId; });
+            if (lain.length >= 3) {
+                showToast('Batas popup', 'Sudah ada 3 flyer popup aktif: ' + lain.map(function(x) { return x.judul; }).join(', ') + '. Hilangkan centang popup pada salah satunya dulu.', 'warning');
+                return;
+            }
+        }
+    }
     const fileInput = document.getElementById('ffGambar');
     const btn = e.target.querySelector('button[type="submit"]');
     const original = btn.innerHTML;

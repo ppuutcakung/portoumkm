@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMode(); // pulihkan pilihan Ritel/Grosir terakhir & pasang warna temanya sebelum halaman pertama digambar
     pantauTabelHp(); // tabel Admin otomatis jadi kartu bertumpuk di layar HP
     pantauJudulHero(); // judul hero dijaga tetap satu baris di layar HP
+    cekPopupPromo();   // popup flyer promo saat customer pertama kali membuka aplikasi
     const safetyTimeout = setTimeout(() => {
         hideLoadingOverlay();
         showToast('Peringatan', 'Inisialisasi lambat/gagal. Cek koneksi atau buka Console (F12) untuk detail error.', 'warning');
@@ -94,6 +95,7 @@ function navigateTo(pageName, options) {
     if (ADMIN_PAGES.includes(pageName) && !AppState.session) {
         pageName = 'adminLogin';
     }
+    if (ADMIN_PAGES.includes(pageName)) muatLencanaKonfirmasi(); // angka antrean di menu Admin selalu diperbarui
     const isAdminPage = ADMIN_PAGES.includes(pageName);
     document.body.classList.toggle('admin-mode', isAdminPage);
     document.getElementById('adminSidebar').classList.toggle('hidden', !isAdminPage);
@@ -124,6 +126,7 @@ function navigateTo(pageName, options) {
         adminFlyer: renderAdminFlyerPage,
         adminMitra: renderAdminMitraPage,
         adminUmkm: renderAdminUmkmPage,
+        adminKonfirmasi: renderAdminKonfirmasiPage,
         adminPesanan: renderAdminPesananPage,
         adminRfq: renderAdminRfqPage,
         adminSettings: renderAdminSettingsPage

@@ -623,6 +623,14 @@ function syncPaketProduk(produkId, tipe) {
 async function submitProdukForm(e) {
     e.preventDefault();
     const el = function(id) { return document.getElementById(id); };
+    // Diperiksa lebih dulu supaya foto tidak terlanjur diunggah ke Drive padahal
+    // penyimpanannya nanti ditolak karena sesi Admin sudah berakhir.
+    const sesiAktif = await authGetSession();
+    if (!sesiAktif) {
+        AppState.session = null;
+        showToast('Sesi berakhir', 'Sesi Admin sudah berakhir. Buka tab baru, login kembali, lalu simpan ulang perubahan ini. Jangan tutup jendela ini agar isian Anda tidak hilang.', 'danger');
+        return;
+    }
     if (!el('pfUmkm').value.trim()) {
         showToast('Peringatan', 'Pilih Nama UMKM Pemilik dari daftar terlebih dahulu.', 'warning');
         el('pfUmkmSearch').focus();
