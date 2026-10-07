@@ -238,7 +238,7 @@ function bukaDetailProduk(id) {
             qty: modeAktif() === 'b2b' ? moqProduk(p, tiers) : 1,
             warnaList: warna, warna: warna.length === 1 ? warna[0] : '',
             paketIdx: ((res.data.paket || []).length === 1) ? 0 : null,
-            modelList: daftarModel(p), model: ''
+            modelList: daftarModel(p), model: '', modelIdx: null
         };
         renderDetailProduk();
     });
@@ -450,6 +450,7 @@ function puPilihModel(i) {
     const d = puDetail;
     if (!d || !d.modelList[i]) return;
     d.model = d.modelList[i].label;
+    d.modelIdx = d.modelList[i].idx;   // dipakai agar foto di PDF ikut yang dipilih
     puGantiFoto(d.modelList[i].idx);
     document.querySelectorAll('#puModelBox .pu-model-chip').forEach(function(el, idx) { el.classList.toggle('active', idx === i); });
     const box = document.getElementById('puModelBox');
@@ -565,14 +566,14 @@ function puAjukanRfq() {
     const d = puDetail;
     if (!d) return;
     const qty = Math.max(d.qty, moqProduk(d.p, d.tiers));
-    const data = { jenis: 'RFQ', produk: d.p, tiers: d.tiers, qty: qty, warna: d.warna, model: d.model };
+    const data = { jenis: 'RFQ', produk: d.p, tiers: d.tiers, qty: qty, warna: d.warna, model: d.model, modelIdx: d.modelIdx };
     tutupDetailProduk();
     bukaRfq(data);
 }
 function puMintaSampel() {
     const d = puDetail;
     if (!d) return;
-    const data = { jenis: 'Sampel', produk: d.p, tiers: d.tiers, qty: 1, warna: d.warna, model: d.model };
+    const data = { jenis: 'Sampel', produk: d.p, tiers: d.tiers, qty: 1, warna: d.warna, model: d.model, modelIdx: d.modelIdx };
     tutupDetailProduk();
     bukaRfq(data);
 }
@@ -587,6 +588,7 @@ const OPSI_PEMBAYARAN_RFQ = ['Cash in Advance / Lunas', 'DP', 'TOP 14 Hari', 'TO
 const OPSI_PEMBAYARAN_SAMPEL = ['Dibeli', 'Pinjam sementara'];
 let rfqState = null;
 let rfqModelTerpilih = '';   // pilihan model/tipe yang dibawa dari popup detail produk
+let rfqModelIndex = null;    // nomor urut fotonya, supaya foto di PDF ikut yang dipilih
 
 /** "DP" + 30 -> "DP 30%"; opsi lain apa adanya. */
 function teksPembayaran(opsi, dp) {
@@ -625,6 +627,7 @@ function bukaRfq(opts) {
     const qty = Math.max(1, Number(opts.qty) || 1);
     const spekAwal = [opts.model ? ('Model: ' + opts.model) : '', opts.warna ? ('Warna: ' + opts.warna) : ''].filter(Boolean).join(' | ');
     rfqModelTerpilih = opts.model || '';
+    rfqModelIndex = Number.isInteger(opts.modelIdx) ? opts.modelIdx : null;
     const opsiBayar = sampel ? OPSI_PEMBAYARAN_SAMPEL : OPSI_PEMBAYARAN_RFQ;
     document.getElementById('previewModalTitle').textContent = judul;
     document.getElementById('previewModalContent').innerHTML = [
@@ -754,7 +757,8 @@ function submitRfq(e) {
         p_jenis: data.jenis, p_nama_perusahaan: perusahaan, p_nama_pic: pic, p_kontak: kontak, p_alamat_penerima: alamat,
         p_produk_id: p ? p.id : null, p_nama_produk: namaProduk, p_nama_umkm: data.namaUmkm, p_target_jumlah: jumlah, p_satuan: data.satuan,
         p_harga_diminta: hargaDiminta, p_opsi_pembayaran: bayar, p_dp_persen: dp, p_batas_waktu: deadline,
-        p_spesifikasi: spek, p_harga_estimasi: hargaEstimasi, p_model: rfqModelTerpilih
+        p_spesifikasi: spek, p_harga_estimasi: hargaEstimasi, p_model: rfqModelTerpilih,
+        p_model_index: rfqModelIndex
     }).then(function(res) {
         if (!res.success) {
             btn.innerHTML = asli;

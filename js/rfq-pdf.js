@@ -508,9 +508,16 @@ async function unduhPdfRfq(r) {
     try {
         const JsPDF = await muatJsPdf();
         let fotoUrl = r.foto_url || '';
+        // Cadangan untuk pengajuan lama yang fotonya belum tersimpan: ambil dari
+        // galeri produknya, dan kalau modelnya tercatat, ambil foto nomor itu.
         if (!fotoUrl && r.produk_id) {
             const res = await dbSelect('produk', { eq: { id: r.produk_id }, limit: 1 });
-            if (res.success && res.data && res.data[0]) fotoUrl = res.data[0].foto_url || '';
+            const p = (res.success && res.data && res.data[0]) ? res.data[0] : null;
+            if (p) {
+                const galeri = Array.isArray(p.foto_galeri) ? p.foto_galeri : [];
+                const i = Number.isInteger(r.model_index) ? r.model_index : -1;
+                fotoUrl = (i >= 0 && galeri[i] && galeri[i].url) ? galeri[i].url : (p.foto_url || '');
+            }
         }
         const foto = await muatFotoUntukPdf(fotoUrl);
         const pdf = buatAdapterJsPdf(JsPDF);
