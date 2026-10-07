@@ -79,8 +79,7 @@ function tampilkanPopupPromo(items) {
       '</div>',
       banyak ? ('<div class="pu-promo-dots">' + items.map(function(f, i) {
           return '<button type="button" class="pu-promo-dot' + (i === 0 ? ' aktif' : '') + '" onclick="keSlidePromo(' + i + ')" aria-label="Promo ' + (i + 1) + '"></button>';
-      }).join('') + '</div>') : '',
-      '<button type="button" class="btn-ghost pu-promo-lanjut" onclick="tutupPopupPromo()">Lanjut Belanja</button>'
+      }).join('') + '</div>') : ''
     ].join('');
     openModal('popupPromoModal');
     if (banyak) mulaiGulirPromo();
@@ -264,7 +263,9 @@ function loadHomePageDataGabungan() {
     }
     Promise.all([
         dbSelect('hero_carousel', { order: 'urutan', limit: 5 }),
-        dbSelect('flyer_promo', { eq: { status: 'Aktif' }, limit: 3 }),
+        // Flyer yang ditandai sebagai popup TIDAK ikut ke banner Beranda: bentuk gambarnya
+        // persegi (1:1), sedangkan banner memanjang, jadi akan terpotong kalau dicampur.
+        dbSelect('flyer_promo', { eq: { status: 'Aktif', tampil_popup: false }, limit: 3 }),
         dbRpc('get_produk_unggulan_per_kategori', { per_kategori: 4, p_mode: mode })
     ]).then(function(results) {
         const heroRes = results[0], flyerRes = results[1], produkRes = results[2];

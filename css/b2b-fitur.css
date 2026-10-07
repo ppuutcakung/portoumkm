@@ -361,10 +361,6 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
     border: 0; background: rgba(255, 255, 255, .55);
 }
 .pu-promo-dot.aktif { background: #fff; width: 22px; border-radius: 999px; }
-.pu-promo-lanjut {
-    display: block; width: 100%; margin-top: 12px; height: 42px;
-    background: #fff; border-color: #fff;
-}
 @media (max-width: 720px) {
     .modal-box.pu-promo-box { width: calc(100vw - 36px); max-width: calc(100vw - 36px); }
     .pu-promo-tutup { top: -12px; right: -8px; width: 34px; height: 34px; }
