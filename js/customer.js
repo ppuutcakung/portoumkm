@@ -503,13 +503,17 @@ function renderKatalogPage() {
       '</div>'
     ].join('');
 
-    // Urutan kategori: Kuliner -> Pertanian -> Kerajinan. "Paket Promo" & "Sering Dipesan" hanya di mode ritel.
-    const sektorList = [
-        { key: 'Semua', label: 'Semua Produk', ikon: 'bi-grid-fill', warna: 'netral' },
-        { key: 'PortoRasa', label: 'PortoRasa (Kuliner)', ikon: 'bi-egg-fried', warna: 'rasa' },
-        { key: 'PortoTani', label: 'PortoTani (Pertanian)', ikon: 'bi-flower1', warna: 'tani' },
-        { key: 'PortoKriya', label: 'PortoKriya (Kerajinan)', ikon: 'bi-palette-fill', warna: 'kriya' }
-    ];
+    // Urutan tombol sektor dibuat SAMA dengan urutan produk di dalam grid
+    // (lihat SQL get_produk_list), supaya tombol dan isinya tidak bertolak belakang:
+    //   Ritel  : Kerajinan -> Kuliner  -> Pertanian
+    //   Grosir : Kuliner   -> Pertanian -> Kerajinan
+    // "Paket Promo" & "Sering Dipesan" hanya di mode ritel.
+    const sRasa = { key: 'PortoRasa', label: 'PortoRasa (Kuliner)', ikon: 'bi-egg-fried', warna: 'rasa' };
+    const sTani = { key: 'PortoTani', label: 'PortoTani (Pertanian)', ikon: 'bi-flower1', warna: 'tani' };
+    const sKriya = { key: 'PortoKriya', label: 'PortoKriya (Kerajinan)', ikon: 'bi-palette-fill', warna: 'kriya' };
+    const sektorList = [{ key: 'Semua', label: 'Semua Produk', ikon: 'bi-grid-fill', warna: 'netral' }].concat(
+        b2b ? [sRasa, sTani, sKriya] : [sKriya, sRasa, sTani]
+    );
     if (!b2b) {
         sektorList.push({ key: 'PromoB2B', label: 'Paket Promo', ikon: 'bi-tags-fill', warna: 'promo' });
         sektorList.push({ key: 'SeringDipesan', label: 'Produk Sering Dipesan', ikon: 'bi-fire', warna: 'sering' });
