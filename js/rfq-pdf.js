@@ -35,9 +35,11 @@ function susunDokumenRfq(r) {
     const hargaDiminta = (r.harga_diminta !== null && r.harga_diminta !== undefined && r.harga_diminta !== '') ? Number(r.harga_diminta) : null;
     const produk = [
         ['Nama Produk / Kebutuhan', r.nama_produk || '-'],
-        ['UMKM Pemilik', r.nama_umkm || '-'],
-        [sampel ? 'Jumlah Sampel' : 'Target Jumlah', jumlah + (satuan ? ' ' + satuan : '')]
+        ['UMKM Pemilik', r.nama_umkm || '-']
     ];
+    // Model/tipe dicetak tepat di bawah produk supaya Admin dan UMKM langsung melihatnya
+    if (r.model) produk.push(['Model / Tipe', r.model]);
+    produk.push([sampel ? 'Jumlah Sampel' : 'Target Jumlah', jumlah + (satuan ? ' ' + satuan : '')]);
     if (!(sampel && r.opsi_pembayaran === 'Pinjam sementara')) {
         produk.push(['Harga yang Diminta', hargaDiminta !== null ? rupiahPdf(hargaDiminta) + (satuan ? ' / ' + satuan : '') : '-']);
         if (hargaDiminta !== null) produk.push(['Perkiraan Total', rupiahPdf(hargaDiminta * jumlah) + ' (pada harga yang diminta)']);
@@ -242,7 +244,7 @@ function susunDokumenInvoice(p) {
         const qty = Number(i.qty) || 0, harga = Number(i.harga_satuan) || 0;
         return {
             nama: i.nama_produk || '-',
-            ket: [i.nama_umkm || '', i.warna ? ('Warna: ' + i.warna) : '', i.catatan || ''].filter(Boolean).join(' | '),
+            ket: [i.nama_umkm || '', i.model ? ('Model: ' + i.model) : '', i.warna ? ('Warna: ' + i.warna) : '', i.catatan || ''].filter(Boolean).join(' | '),
             qty: qty + (i.satuan ? ' ' + i.satuan : ''),
             harga: rupiahPdf(harga),
             subtotal: rupiahPdf(harga * qty),

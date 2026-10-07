@@ -79,7 +79,7 @@ function kartuPesananAntri(p) {
     const mode = p.mode || 'b2c';
     const its = Array.isArray(p.items) ? p.items : [];
     const daftar = its.map(function(i) {
-        return '<li>' + escapeHtml(i.nama_produk) + (i.warna ? ' <span class="text-xs">[' + escapeHtml(i.warna) + ']</span>' : '') +
+        return '<li>' + escapeHtml(i.nama_produk) + (i.model ? ' <b class="pu-model-tag">' + escapeHtml(i.model) + '</b>' : '') + (i.warna ? ' <span class="text-xs">[' + escapeHtml(i.warna) + ']</span>' : '') +
                ' &times;' + i.qty + ' ' + escapeHtml(i.satuan || '') +
                ' &middot; ' + formatRupiah((Number(i.harga_satuan) || 0) * (Number(i.qty) || 0)) +
                (i.catatan ? '<div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(i.catatan) + '</div>' : '') + '</li>';
@@ -115,6 +115,7 @@ function kartuRfqAntri(r) {
       barisKartu('WhatsApp / HP', r.kontak),
       barisKartu('Alamat Penerima', r.alamat_penerima),
       barisKartu('Produk', r.nama_produk),
+      r.model ? barisKartu('Model / Tipe', r.model) : '',
       barisKartu('UMKM', r.nama_umkm),
       barisKartu(sampel ? 'Jumlah Sampel' : 'Target Jumlah', r.target_jumlah + ' ' + (r.satuan || '')),
       hargaDiminta ? barisKartu('Harga Diminta', hargaDiminta) : '',

@@ -390,3 +390,35 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
 .pu-antri-total { margin-top: 8px; text-align: right; font-size: 13px; color: #334155; }
 .pu-antri-aksi { display: flex; gap: 8px; margin-top: 12px; }
 .pu-antri-aksi > button { flex: 1; height: 40px; }
+
+/* ============================================================
+   PILIH MODEL / TIPE (berdasarkan nomor foto produk)
+   ============================================================ */
+.pu-model { margin-top: 14px; border-radius: 10px; }
+.pu-model.pu-invalid { outline: 2px solid #dc2626; outline-offset: 4px; }
+.pu-model-info { font-size: 11px; color: var(--text-muted); margin: 0 0 8px; }
+.pu-model-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.pu-model-chip {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    width: 86px; padding: 6px; cursor: pointer;
+    border: 2px solid #e2e8f0; border-radius: 10px; background: #fff;
+}
+.pu-model-chip img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 6px; display: block; }
+.pu-model-chip span { font-size: 10px; font-weight: 700; color: #334155; text-align: center; line-height: 1.25; }
+.pu-model-chip.active { border-color: var(--pu-accent, var(--primary)); background: var(--pu-tint); }
+.pu-model-chip.active span { color: var(--pu-accent, var(--primary)); }
+.pu-model-tag {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px;
+    border-radius: 4px; background: #fef3c7; color: #92400e;
+}
+/* Kolom nama per foto di form produk Admin */
+.pf-foto-bungkus { display: flex; flex-direction: column; gap: 4px; width: 84px; }
+.pf-foto-nomor { font-size: 10px; font-weight: 700; color: #475569; text-align: center; }
+.pf-foto-nama {
+    width: 100%; font-size: 10px; padding: 3px 5px;
+    border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #0f172a;
+}
+@media (max-width: 720px) {
+    .pu-model-chip { width: 76px; }
+    .pf-foto-bungkus { width: 72px; }
+}

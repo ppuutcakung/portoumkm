@@ -174,6 +174,22 @@ function sertifikatChipsHtml(p, maks) {
     if (maks && list.length > maks) html += '<span class="pu-cert pu-cert-more">+' + (list.length - maks) + '</span>';
     return html;
 }
+/**
+ * Daftar pilihan model/tipe, diambil dari NOMOR foto produk. Hanya berlaku
+ * kalau Admin menandai bahwa tiap foto menunjukkan model berbeda, dan fotonya
+ * lebih dari satu. Tiap foto boleh diberi nama sendiri; kalau kosong, dipakai
+ * "Gambar 1", "Gambar 2", dan seterusnya.
+ */
+function daftarModel(p) {
+    if (!p || p.foto_beda_model !== true) return [];
+    const g = Array.isArray(p.foto_galeri) ? p.foto_galeri.filter(function(x) { return x && x.url; }) : [];
+    if (g.length < 2) return [];
+    return g.map(function(f, i) {
+        const nomor = 'Gambar ' + (i + 1);
+        const nama = String((f && f.nama) || '').trim();
+        return { idx: i, url: f.url, label: nama ? (nomor + ' - ' + nama) : nomor };
+    });
+}
 function daftarWarna(p) {
     return (Array.isArray(p.warna_pilihan) ? p.warna_pilihan : []).map(function(w) { return String(w).trim(); }).filter(Boolean);
 }
@@ -221,7 +237,8 @@ function bukaDetailProduk(id) {
             mode: modeAktif(),
             qty: modeAktif() === 'b2b' ? moqProduk(p, tiers) : 1,
             warnaList: warna, warna: warna.length === 1 ? warna[0] : '',
-            paketIdx: ((res.data.paket || []).length === 1) ? 0 : null
+            paketIdx: ((res.data.paket || []).length === 1) ? 0 : null,
+            modelList: daftarModel(p), model: ''
         };
         renderDetailProduk();
     });
@@ -299,6 +316,18 @@ function renderDetailProduk() {
             '<div class="pu-paket-menu" id="puPaketMenu"></div></div>';
     }
 
+    // ---- pilihan model/tipe berdasarkan nomor foto ----
+    let modelHtml = '';
+    if (d.modelList.length) {
+        modelHtml = '<div class="pu-model" id="puModelBox"><div class="pu-label">Pilih Model / Tipe <span class="pu-req">*</span></div>' +
+            '<p class="pu-model-info">Setiap foto menunjukkan model yang berbeda. Pilih sesuai gambar yang Anda inginkan.</p>' +
+            '<div class="pu-model-list">' +
+            d.modelList.map(function(m, i) {
+                return '<button type="button" class="pu-model-chip' + (d.model === m.label ? ' active' : '') + '" onclick="puPilihModel(' + i + ')">' +
+                       '<img src="' + escapeAttr(m.url) + '" alt=""><span>' + escapeHtml(m.label) + '</span></button>';
+            }).join('') + '</div></div>';
+    }
+
     // ---- pilihan warna ----
     let warna = '';
     if (d.warnaList.length) {
@@ -347,7 +376,7 @@ function renderDetailProduk() {
         '<h2 class="pu-detail-title">' + escapeHtml(p.nama_produk) + '</h2>' +
         '<div class="pu-detail-by">Diproduksi oleh: <b>' + escapeHtml(p.nama_umkm) + '</b></div>' +
         (p.deskripsi ? '<p class="pu-detail-desc">' + escapeHtml(p.deskripsi) + '</p>' : '') +
-        harga + paketHtml + warna + kalkulator +
+        harga + paketHtml + modelHtml + warna + kalkulator +
         '<div class="pu-actions">' + tombolWa + aksi + '</div>' +
         '</div></div>';
     puGambarMenuPaket();
@@ -415,6 +444,25 @@ function puGantiFoto(i) {
     const img = document.getElementById('puFotoUtama');
     if (img) img.src = d.galeri[i];
     document.querySelectorAll('#detailProdukBody .pu-thumb').forEach(function(el, idx) { el.classList.toggle('active', idx === i); });
+}
+/** Pilih model: menandai pilihan sekaligus menampilkan fotonya di galeri atas. */
+function puPilihModel(i) {
+    const d = puDetail;
+    if (!d || !d.modelList[i]) return;
+    d.model = d.modelList[i].label;
+    puGantiFoto(d.modelList[i].idx);
+    document.querySelectorAll('#puModelBox .pu-model-chip').forEach(function(el, idx) { el.classList.toggle('active', idx === i); });
+    const box = document.getElementById('puModelBox');
+    if (box) box.classList.remove('pu-invalid');
+}
+/** Model wajib dipilih kalau produk memang punya beberapa model. */
+function puPastikanModel() {
+    const d = puDetail;
+    if (!d || !d.modelList.length || d.model) return true;
+    const box = document.getElementById('puModelBox');
+    if (box) { box.classList.add('pu-invalid'); box.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    showToast('Pilih Model', 'Produk ini punya beberapa model. Pilih dulu sesuai gambar yang Anda inginkan.', 'warning');
+    return false;
 }
 function puPilihWarna(i) {
     const d = puDetail;
@@ -498,33 +546,33 @@ function puPastikanMoq() {
 }
 function puTambahKeranjang() {
     const d = puDetail;
-    if (!d || !puPastikanWarna() || !puPastikanPaket() || !puPastikanMoq()) return;
+    if (!d || !puPastikanModel() || !puPastikanWarna() || !puPastikanPaket() || !puPastikanMoq()) return;
     const p = d.p;
     const pk = (d.paketIdx !== null && d.paketIdx !== undefined) ? d.paket[d.paketIdx] : null;
     const nama = pk ? (p.nama_produk + ' - ' + pk.nama_paket) : p.nama_produk;
     const catatan = pk ? (pk.deskripsi_menu || '') : '';
-    addToCart(p.id, nama, puHargaSatuanAktif(), p.satuan || 'pcs', p.nama_umkm, d.qty, catatan, d.warna, d.mode);
+    addToCart(p.id, nama, puHargaSatuanAktif(), p.satuan || 'pcs', p.nama_umkm, d.qty, catatan, d.warna, d.mode, d.model);
     tutupDetailProduk();
 }
 function puPesanCustom() {
     const d = puDetail;
-    if (!d || !puPastikanWarna()) return;
-    const p = d.p, warna = d.warna;
+    if (!d || !puPastikanModel() || !puPastikanWarna()) return;
+    const p = d.p, warna = d.warna, model = d.model;
     tutupDetailProduk();
-    bukaPesananCustom({ id: p.id, nama: p.nama_produk, harga: hargaRitelProduk(p), satuan: p.satuan || 'pcs', umkm: p.nama_umkm, warna: warna });
+    bukaPesananCustom({ id: p.id, nama: p.nama_produk, harga: hargaRitelProduk(p), satuan: p.satuan || 'pcs', umkm: p.nama_umkm, warna: warna, model: model });
 }
 function puAjukanRfq() {
     const d = puDetail;
     if (!d) return;
     const qty = Math.max(d.qty, moqProduk(d.p, d.tiers));
-    const data = { jenis: 'RFQ', produk: d.p, tiers: d.tiers, qty: qty, warna: d.warna };
+    const data = { jenis: 'RFQ', produk: d.p, tiers: d.tiers, qty: qty, warna: d.warna, model: d.model };
     tutupDetailProduk();
     bukaRfq(data);
 }
 function puMintaSampel() {
     const d = puDetail;
     if (!d) return;
-    const data = { jenis: 'Sampel', produk: d.p, tiers: d.tiers, qty: 1, warna: d.warna };
+    const data = { jenis: 'Sampel', produk: d.p, tiers: d.tiers, qty: 1, warna: d.warna, model: d.model };
     tutupDetailProduk();
     bukaRfq(data);
 }
@@ -538,6 +586,7 @@ function puMintaSampel() {
 const OPSI_PEMBAYARAN_RFQ = ['Cash in Advance / Lunas', 'DP', 'TOP 14 Hari', 'TOP 30 Hari'];
 const OPSI_PEMBAYARAN_SAMPEL = ['Dibeli', 'Pinjam sementara'];
 let rfqState = null;
+let rfqModelTerpilih = '';   // pilihan model/tipe yang dibawa dari popup detail produk
 
 /** "DP" + 30 -> "DP 30%"; opsi lain apa adanya. */
 function teksPembayaran(opsi, dp) {
@@ -574,7 +623,8 @@ function bukaRfq(opts) {
     const judul = sampel ? 'Permintaan Paket Sampel B2B' : (jenis === 'Kustom' ? 'Pengajuan Penawaran B2B Kustom (RFQ)' : 'Pengajuan Penawaran B2B (RFQ)');
     const satuan = p ? (p.satuan || 'pcs') : '';
     const qty = Math.max(1, Number(opts.qty) || 1);
-    const spekAwal = opts.warna ? ('Warna: ' + opts.warna) : '';
+    const spekAwal = [opts.model ? ('Model: ' + opts.model) : '', opts.warna ? ('Warna: ' + opts.warna) : ''].filter(Boolean).join(' | ');
+    rfqModelTerpilih = opts.model || '';
     const opsiBayar = sampel ? OPSI_PEMBAYARAN_SAMPEL : OPSI_PEMBAYARAN_RFQ;
     document.getElementById('previewModalTitle').textContent = judul;
     document.getElementById('previewModalContent').innerHTML = [
@@ -697,14 +747,14 @@ function submitRfq(e) {
     btn.disabled = true;
     const data = {
         jenis: st.jenis, perusahaan: perusahaan, pic: pic, kontak: kontak, alamat: alamat, namaProduk: namaProduk,
-        namaUmkm: p ? (p.nama_umkm || '') : '', jumlah: jumlah, satuan: p ? (p.satuan || '') : '', hargaDiminta: hargaDiminta,
+        namaUmkm: p ? (p.nama_umkm || '') : '', model: rfqModelTerpilih, jumlah: jumlah, satuan: p ? (p.satuan || '') : '', hargaDiminta: hargaDiminta,
         bayar: bayar, dp: dp, deadline: deadline, spek: spek, hargaEstimasi: hargaEstimasi, nomor: ''
     };
     return dbRpc('submit_rfq', {
         p_jenis: data.jenis, p_nama_perusahaan: perusahaan, p_nama_pic: pic, p_kontak: kontak, p_alamat_penerima: alamat,
         p_produk_id: p ? p.id : null, p_nama_produk: namaProduk, p_nama_umkm: data.namaUmkm, p_target_jumlah: jumlah, p_satuan: data.satuan,
         p_harga_diminta: hargaDiminta, p_opsi_pembayaran: bayar, p_dp_persen: dp, p_batas_waktu: deadline,
-        p_spesifikasi: spek, p_harga_estimasi: hargaEstimasi
+        p_spesifikasi: spek, p_harga_estimasi: hargaEstimasi, p_model: rfqModelTerpilih
     }).then(function(res) {
         if (!res.success) {
             btn.innerHTML = asli;
@@ -728,6 +778,7 @@ function pesanWaRfq(d) {
     t += '*Alamat Penerima:* ' + d.alamat + '\n';
     t += '*Produk:* ' + d.namaProduk + '\n';
     if (d.namaUmkm) t += '*UMKM:* ' + d.namaUmkm + '\n';
+    if (d.model) t += '*Model/Tipe:* ' + d.model + '\n';
     t += '*' + (sampel ? 'Jumlah Sampel' : 'Target Jumlah') + ':* ' + d.jumlah + (d.satuan ? ' ' + d.satuan : '') + '\n';
     if (d.hargaDiminta != null) t += '*Harga yang Diminta:* ' + formatRupiah(d.hargaDiminta) + (d.satuan ? ' / ' + d.satuan : '') + '\n';
     if (d.hargaEstimasi) t += '*Acuan Harga Skema Grosir:* ' + formatRupiah(d.hargaEstimasi) + ' (final mengikuti penawaran resmi)\n';

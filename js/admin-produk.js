@@ -142,7 +142,7 @@ function hapusProdukById(id) {
 
 /** Foto produk sebagai [{url, path}] - dari galeri; cadangan ke kolom foto lama kalau galeri belum terisi. */
 function galeriDariProduk(p) {
-    const g = (Array.isArray(p.foto_galeri) ? p.foto_galeri : []).filter(function(x) { return x && x.url; }).map(function(x) { return { url: x.url, path: x.path || '' }; });
+    const g = (Array.isArray(p.foto_galeri) ? p.foto_galeri : []).filter(function(x) { return x && x.url; }).map(function(x) { return { url: x.url, path: x.path || '', nama: x.nama || '' }; });
     if (g.length) return g;
     const lama = [];
     if (p.foto_url) lama.push({ url: p.foto_url, path: p.foto_path || '' });
@@ -278,6 +278,10 @@ function openProdukForm(p) {
       '<div class="form-group hidden" id="pfSubLainnyaWrap"><label class="form-label">Tulis Sub-kategori Sendiri *</label>',
       '<input class="form-input" id="pfSubLainnya" maxlength="60" placeholder="mis. Katering Harian">',
       '<p class="pf-foto-info">Teks ini otomatis muncul sebagai Tag Cepat di katalog publik.</p></div>',
+      '<div class="pf-section"><div class="pf-section-title">Foto menunjukkan model berbeda?</div>',
+      '<label class="pf-cek"><input type="checkbox" id="pfBedaModel" ', (p.foto_beda_model ? 'checked' : ''), ' onchange="renderFotoProduk()"> Ya, tiap foto adalah model/motif/tipe yang berbeda</label>',
+      '<p class="pf-foto-info">Kalau dicentang, customer WAJIB memilih model saat memesan (Gambar 1, Gambar 2, dan seterusnya), dan pilihannya ikut tercatat di pesanan serta dokumen PDF. Butuh minimal 2 foto. Beri nama tiap foto di bawah bila perlu, misalnya "Motif Parang".</p>',
+      '</div>',
       '<div class="form-group hidden" id="pfWarnaWrap"><label class="form-label">Pilihan Warna (pisahkan dengan koma)</label>',
       '<input class="form-input" id="pfWarna" value="', escapeAttr(daftarWarna(p).join(', ')), '" placeholder="mis. Merah, Biru, Hijau">',
       '<p class="pf-foto-info">Pelanggan wajib memilih salah satu warna saat memesan (mode Ritel). Warna yang dipilih ikut tercatat di keranjang, pesan WhatsApp, dan data pesanan.</p></div>',
@@ -394,9 +398,11 @@ function renderFotoProduk() {
     if (!wrap) return;
     let html = '';
     pfFotoList.forEach(function(f, i) {
-        html += '<div class="pf-foto-item' + (i === 0 ? ' utama' : '') + '"><img src="' + escapeAttr(f.url) + '" alt="">' +
+        const label = bedaModelAktif() ? ('<input class="pf-foto-nama" value="' + escapeAttr(f.nama || '') + '" placeholder="Gambar ' + (i + 1) + '" oninput="ubahNamaFoto(' + i + ', this.value)">') : '';
+        html += '<div class="pf-foto-bungkus"><div class="pf-foto-item' + (i === 0 ? ' utama' : '') + '"><img src="' + escapeAttr(f.url) + '" alt="">' +
             '<button type="button" class="pf-foto-del" onclick="hapusFotoLama(' + i + ')" title="Hapus foto"><i class="bi bi-x-lg"></i></button>' +
-            (i === 0 ? '<div class="pf-foto-tag">Utama</div>' : '<button type="button" class="pf-foto-tag" onclick="jadikanFotoUtama(' + i + ')">Jadikan utama</button>') + '</div>';
+            (i === 0 ? '<div class="pf-foto-tag">Utama</div>' : '<button type="button" class="pf-foto-tag" onclick="jadikanFotoUtama(' + i + ')">Jadikan utama</button>') + '</div>' +
+            (bedaModelAktif() ? '<div class="pf-foto-nomor">Gambar ' + (i + 1) + '</div>' : '') + label + '</div>';
     });
     pfFotoBaru.forEach(function(f, i) {
         const utama = pfFotoList.length === 0 && i === 0;
@@ -407,6 +413,15 @@ function renderFotoProduk() {
     wrap.innerHTML = html || '<div class="pf-foto-info">Belum ada foto.</div>';
     const info = document.getElementById('pfFotoInfo');
     if (info) info.textContent = (pfFotoList.length + pfFotoBaru.length) + ' / ' + MAKS_FOTO_PRODUK + ' foto. Foto pertama = foto utama (tampil di kartu produk). Foto otomatis dikecilkan (maks. 1600 px) dan diubah ke WebP saat disimpan.';
+}
+/** Apakah centang "foto menunjukkan model berbeda" sedang aktif. */
+function bedaModelAktif() {
+    const el = document.getElementById('pfBedaModel');
+    return !!(el && el.checked);
+}
+/** Simpan nama foto (dipakai sebagai label model, mis. "Motif Parang"). */
+function ubahNamaFoto(i, nilai) {
+    if (pfFotoList[i]) pfFotoList[i].nama = String(nilai || '').slice(0, 60);
 }
 function tambahFotoBaru(input) {
     const files = Array.from(input.files || []);
@@ -654,6 +669,10 @@ async function submitProdukForm(e) {
         el('pfSubLainnya').focus();
         return;
     }
+    if (bedaModelAktif() && (pfFotoList.length + pfFotoBaru.length) < 2) {
+        showToast('Peringatan', 'Centang "foto menunjukkan model berbeda" membutuhkan minimal 2 foto. Tambahkan foto dulu, atau hilangkan centangnya.', 'warning');
+        return;
+    }
     const record = {
         nama_produk: el('pfNama').value.trim(),
         nama_umkm: el('pfUmkm').value.trim(),
@@ -675,7 +694,8 @@ async function submitProdukForm(e) {
         tampilkan_rfq: (KATEGORI_PESAN_LANGSUNG.indexOf(kategori) === -1) ? true : el('pfTampilkanRfq').checked,
         sertifikasi: bacaSertifikatDariForm(),
         ketahanan_simpan: el('pfKetahanan').value.trim(),
-        warna_pilihan: kategori === 'PortoKriya' ? parseDaftarWarna(el('pfWarna').value) : []
+        warna_pilihan: kategori === 'PortoKriya' ? parseDaftarWarna(el('pfWarna').value) : [],
+        foto_beda_model: bedaModelAktif()
     };
     const btn = e.target.querySelector('button[type="submit"]');
     const asli = btn.innerHTML;

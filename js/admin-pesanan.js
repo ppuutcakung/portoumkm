@@ -111,7 +111,7 @@ function renderPesananTabel() {
         const mode = p.mode || 'b2c';
         const its = itemsPesanan(p);
         const ringkasItem = its.slice(0, 2).map(function(i) {
-            return escapeHtml(i.nama_produk + (i.warna ? ' [' + i.warna + ']' : '') + ' x' + i.qty + (i.satuan || ''));
+            return escapeHtml(i.nama_produk + (i.model ? ' [' + i.model + ']' : '') + (i.warna ? ' [' + i.warna + ']' : '') + ' x' + i.qty + (i.satuan || ''));
         }).join('<br>') + (its.length > 2 ? ('<div class="text-xs" style="color:var(--text-muted)">+' + (its.length - 2) + ' item lain</div>') : '');
         const pemesan = p.nama_perusahaan
             ? '<div class="font-semibold" style="color:var(--text-primary)">' + escapeHtml(p.nama_perusahaan) + '</div><div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(p.nama_pemesan) + ' &middot; ' + escapeHtml(p.no_hp || '') + '</div>'
@@ -239,7 +239,7 @@ function lihatPesananAdmin(id) {
     const tabelItem = its.length ? ('<table class="data-table" style="margin-top:10px;"><thead><tr><th>Produk</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead><tbody>' +
         its.map(function(i) {
             const sub = (Number(i.harga_satuan) || 0) * (Number(i.qty) || 0);
-            return '<tr><td style="white-space:normal;">' + escapeHtml(i.nama_produk) + (i.warna ? ' <span class="text-xs">[' + escapeHtml(i.warna) + ']</span>' : '') +
+            return '<tr><td style="white-space:normal;">' + escapeHtml(i.nama_produk) + (i.model ? ' <span class="text-xs">[' + escapeHtml(i.model) + ']</span>' : '') + (i.warna ? ' <span class="text-xs">[' + escapeHtml(i.warna) + ']</span>' : '') +
                    '<div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(i.nama_umkm || '') + (i.catatan ? ' &middot; ' + escapeHtml(i.catatan) : '') + '</div></td>' +
                    '<td class="whitespace-nowrap">' + i.qty + ' ' + escapeHtml(i.satuan || '') + '</td>' +
                    '<td class="whitespace-nowrap">' + formatRupiah(i.harga_satuan) + '</td>' +

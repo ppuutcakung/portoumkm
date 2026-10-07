@@ -234,7 +234,7 @@ async function konversiSemuaFotoLama() {
         }
     }
 
-    // --- Mitra Pemasaran ---
+    // --- Customer ---
     const mitraRes = await dbSelect('mitra_pemasaran');
     for (const m of (mitraRes.success ? mitraRes.data : [])) {
         if (!m.logo_url) continue;
@@ -246,7 +246,7 @@ async function konversiSemuaFotoLama() {
             await dbUpdate('mitra_pemasaran', m.id, { logo_url: hasil.urlBaru, logo_path: hasil.fileIdBaru });
             if (fileIdLama) await deleteFile(fileIdLama);
             totalBerhasil++;
-            log('✓ Mitra: ' + escapeHtml(m.nama_perusahaan));
+            log('✓ Customer: ' + escapeHtml(m.nama_perusahaan));
         }
     }
 

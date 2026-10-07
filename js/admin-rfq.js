@@ -136,6 +136,7 @@ function lihatRfq(id) {
         baris('Alamat Penerima', r.alamat_penerima) +
         baris('Produk', r.nama_produk) +
         baris('UMKM', r.nama_umkm) +
+        (r.model ? baris('Model / Tipe', r.model) : '') +
         baris(sampel ? 'Jumlah Sampel' : 'Target Jumlah', r.target_jumlah + ' ' + (r.satuan || '')) +
         baris('Harga yang Diminta', hargaDiminta) +
         baris('Acuan skema grosir', r.harga_estimasi_satuan ? formatRupiah(r.harga_estimasi_satuan) : '') +

@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * PortoUMKM - Admin: Galeri Hero, Banner Promo, Mitra
+ * PortoUMKM - Admin: Galeri Hero, Banner Promo, Customer
  * Pemasaran, Data UMKM
  * ============================================================
  */
@@ -236,9 +236,9 @@ async function submitFlyerForm(e) {
 let adminMitraCache = [];
 function renderAdminMitraPage() {
     const container = document.getElementById('app-container');
-    container.innerHTML = adminPageShell('Mitra Pemasaran', [
+    container.innerHTML = adminPageShell('Customer', [
       '<div class="flex justify-end mb-3">',
-      '<button class="btn-primary" onclick="openMitraForm()"><i class="bi bi-plus-lg"></i> Tambah Mitra</button>',
+      '<button class="btn-primary" onclick="openMitraForm()"><i class="bi bi-plus-lg"></i> Tambah Customer</button>',
       '</div>',
       '<div id="mitraAdminGrid" class="grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));"></div>'
     ].join(''));
@@ -269,7 +269,7 @@ function renderAdminMitraGrid() {
 }
 
 function openMitraForm() {
-    document.getElementById('previewModalTitle').textContent = 'Tambah Mitra Pemasaran';
+    document.getElementById('previewModalTitle').textContent = 'Tambah Customer';
     document.getElementById('previewModalContent').innerHTML = [
       '<form onsubmit="submitMitraForm(event)" class="text-left">',
       '<div class="form-group"><label class="form-label">Nama Perusahaan</label><input class="form-input" id="mfNama"></div>',
@@ -293,7 +293,7 @@ function submitMitraForm(e) {
         dbInsert('mitra_pemasaran', { nama_perusahaan: nama, logo_url: res.data.url, logo_path: res.data.fileId }).then(function(res2) {
             if (!res2.success) { showToast('Gagal', res2.message, 'danger'); btn.disabled = false; return; }
             AppState.cache = {};
-            showToast('Berhasil', 'Mitra ditambahkan.', 'success');
+            showToast('Berhasil', 'Customer ditambahkan.', 'success');
             closeModal('previewModal');
             loadAdminMitra();
         });

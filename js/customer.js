@@ -114,7 +114,7 @@ function tutupPopupPromo() {
 /**
  * ============================================================
  * PortoUMKM - Halaman Customer: Beranda, Semua Produk,
- * Detail Produk, Mitra Pemasaran
+ * Detail Produk, Customer
  * ============================================================
  */
 
@@ -444,6 +444,7 @@ function bukaPesananCustom(info) {
     document.getElementById('previewModalContent').innerHTML = [
       '<form onsubmit="submitPesananCustom(event)" class="text-left">',
       '<p class="font-bold mb-1" style="color:var(--text-primary)">' + escapeHtml(info.nama) + '</p>',
+      info.model ? ('<p class="text-xs mb-1" style="color:var(--text-muted)">Model dipilih: <b>' + escapeHtml(info.model) + '</b></p>') : '',
       info.warna ? ('<p class="text-xs mb-1" style="color:var(--text-muted)">Warna dipilih: <b>' + escapeHtml(info.warna) + '</b></p>') : '',
       '<p class="text-xs mb-3" style="color:var(--text-muted)">Kosongkan kalau tidak ada permintaan khusus - bisa didiskusikan langsung lewat WhatsApp setelah pesanan dikirim.</p>',
       '<div class="form-group"><label class="form-label">Budget per ' + escapeHtml(info.satuan) + ' (Rp) - opsional</label><input class="form-input" type="number" id="cuBudget" placeholder="mis. 25000"></div>',
@@ -463,7 +464,7 @@ function submitPesananCustom(e) {
     let catatan = '';
     if (budget) catatan += 'Budget: ' + formatRupiah(Number(budget)) + '/' + c.satuan;
     if (menu) catatan += (catatan ? ' | ' : '') + 'Menu: ' + menu;
-    addToCart(c.id, c.nama, harga, c.satuan, c.umkm, 1, catatan, c.warna || '', 'b2c');
+    addToCart(c.id, c.nama, harga, c.satuan, c.umkm, 1, catatan, c.warna || '', 'b2c', c.model || '');
     closeModal('previewModal');
 }
 
@@ -662,7 +663,7 @@ function renderMitraPage() {
     const container = document.getElementById('app-container');
     container.innerHTML = [
       '<div class="page-wrap">',
-      '<h1 class="text-xl md:text-2xl font-extrabold mb-1" style="color:var(--text-primary)">Mitra Pemasaran</h1>',
+      '<h1 class="text-xl md:text-2xl font-extrabold mb-1" style="color:var(--text-primary)">Customer</h1>',
       '<p class="text-sm mb-5" style="color:var(--text-muted)">Perusahaan/corporate yang pernah berkolaborasi dengan UMKM binaan PPU UT Cakung.</p>',
       '<div id="mitraGrid" class="grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));"></div>',
       '</div>'
