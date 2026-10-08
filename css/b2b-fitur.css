@@ -422,3 +422,76 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
     .pu-model-chip { width: 76px; }
     .pf-foto-bungkus { width: 72px; }
 }
+
+/* ============================================================
+   JAM SAMPAI PER PRODUK
+   Satu pesanan boleh punya jam sampai berbeda tiap produknya.
+   ============================================================ */
+.pu-jam-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px dashed var(--border, #e2e8f0);
+}
+.pu-jam-item > label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .02em;
+}
+.pu-jam-input.form-input {
+    width: 112px;
+    min-width: 0;
+    height: 34px;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+}
+.pu-jam-info {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+.pu-jam-reset {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+/* Keterangan di bawah kolom jam umum pada form pemesan */
+.pu-jam-ringkas {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    margin: -6px 0 14px;
+}
+.pu-jam-ringkas-aktif {
+    color: var(--text-body);
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: -2px 0 14px;
+}
+/* Penanda jam pada rincian item di halaman Admin */
+.pu-jam-tag {
+    font-size: 11px;
+    color: var(--text-body);
+    margin-top: 2px;
+}
+.pu-jam-tag b { color: var(--text-primary); }
+
+@media (max-width: 720px) {
+    .pu-jam-item { gap: 6px; }
+    .pu-jam-item > label { font-size: 11px; }
+    .pu-jam-input.form-input { width: 100px; height: 36px; }
+}

@@ -236,6 +236,18 @@ function gambarDokumenRfq(pdf, doc, foto, opsi) {
 
 // -------------------- INVOICE PESANAN --------------------
 /** Ubah satu baris pesanan (beserta itemnya) menjadi isi dokumen invoice. */
+/**
+ * Ringkasan jam untuk bagian Pengiriman: satu jam bila semua produk sama,
+ * atau penunjuk ke rincian bila berbeda. Tidak pernah menampilkan satu jam
+ * saat kenyataannya berbeda, supaya dokumen tidak menyesatkan.
+ */
+function jamRingkasPesanan(items, jamUmum) {
+    const daftar = (items || []).map(function(i) { return i.jam || ''; }).filter(Boolean);
+    if (!daftar.length) return jamUmum || '-';
+    const unik = daftar.filter(function(j, n) { return daftar.indexOf(j) === n; });
+    if (unik.length === 1 && daftar.length === (items || []).length) return unik[0];
+    return 'Berbeda per produk - lihat rincian di bawah';
+}
 function susunDokumenInvoice(p) {
     const mode = p.mode || 'b2c';
     const b2b = mode === 'b2b';
@@ -244,6 +256,9 @@ function susunDokumenInvoice(p) {
         const qty = Number(i.qty) || 0, harga = Number(i.harga_satuan) || 0;
         return {
             nama: i.nama_produk || '-',
+            // Jam dicetak sebagai barisnya sendiri, bukan digabung ke keterangan,
+            // supaya tidak terlewat saat UMKM dan kurir membaca dokumennya.
+            jam: i.jam_maksimal || p.jam_maksimal || '',
             ket: [i.nama_umkm || '', i.model ? ('Model: ' + i.model) : '', i.warna ? ('Warna: ' + i.warna) : '', i.catatan || ''].filter(Boolean).join(' | '),
             qty: qty + (i.satuan ? ' ' + i.satuan : ''),
             harga: rupiahPdf(harga),
@@ -269,7 +284,9 @@ function susunDokumenInvoice(p) {
         pemesan: pemesan,
         pengiriman: [
             ['Tanggal Dikirim', p.tanggal_kirim ? tanggalDateIndo(p.tanggal_kirim) : '-'],
-            ['Maksimal Jam Sampai', p.jam_maksimal || '-']
+            // Kalau jam antar produk tidak sama, bagian ini TIDAK menyebut satu jam
+            // tunggal - itu justru sumber salah kirim yang mau dihindari.
+            ['Maksimal Jam Sampai', jamRingkasPesanan(items, p.jam_maksimal)]
         ],
         items: items,
         total: rupiahPdf(total),
@@ -366,12 +383,20 @@ function gambarDokumenInvoice(pdf, doc, opsi) {
         const nama = bungkusTeks(pdf, bersihkanTeksPdf(it.nama), WP - 3);
         pdf.font('normal', 7.5);
         const ket = it.ket ? bungkusTeks(pdf, bersihkanTeksPdf(it.ket), WP - 3) : [];
-        const h = nama.length * LH + ket.length * 3.6 + 3.5;
+        // Baris jam diberi tempatnya sendiri di bawah nama produk.
+        const barisJam = it.jam ? 4.2 : 0;
+        const h = nama.length * LH + barisJam + ket.length * 3.6 + 3.5;
         pastikanRuang(h + 2);
         pdf.font('normal', 9); pdf.warnaTeks(TEKS);
         nama.forEach(function(l, i) { pdf.teks(l, M + 1, y + 4.4 + i * LH); });
+        let yIsi = y + 4.4 + nama.length * LH;
+        if (it.jam) {
+            pdf.font('bold', 8); pdf.warnaTeks(aksen);
+            pdf.teks('Maks. jam sampai: ' + bersihkanTeksPdf(it.jam), M + 1, yIsi + 0.6);
+            yIsi += barisJam;
+        }
         pdf.font('normal', 7.5); pdf.warnaTeks(REDUP);
-        ket.forEach(function(l, i) { pdf.teks(l, M + 1, y + 4.4 + nama.length * LH + i * 3.6); });
+        ket.forEach(function(l, i) { pdf.teks(l, M + 1, yIsi + i * 3.6); });
         pdf.font('normal', 9); pdf.warnaTeks(TEKS);
         pdf.teks(bersihkanTeksPdf(it.qty), XQ + 1, y + 4.4);
         teksKanan(it.harga, XH + WH - 1, y + 4.4);

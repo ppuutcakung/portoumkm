@@ -79,9 +79,11 @@ function kartuPesananAntri(p) {
     const mode = p.mode || 'b2c';
     const its = Array.isArray(p.items) ? p.items : [];
     const daftar = its.map(function(i) {
+        const jam = i.jam_maksimal || p.jam_maksimal || '';
         return '<li>' + escapeHtml(i.nama_produk) + (i.model ? ' <b class="pu-model-tag">' + escapeHtml(i.model) + '</b>' : '') + (i.warna ? ' <span class="text-xs">[' + escapeHtml(i.warna) + ']</span>' : '') +
                ' &times;' + i.qty + ' ' + escapeHtml(i.satuan || '') +
                ' &middot; ' + formatRupiah((Number(i.harga_satuan) || 0) * (Number(i.qty) || 0)) +
+               (jam ? '<div class="pu-jam-tag"><i class="bi bi-clock"></i> Maks. jam sampai <b>' + escapeHtml(jamSederhana(jam)) + '</b></div>' : '') +
                (i.catatan ? '<div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(i.catatan) + '</div>' : '') + '</li>';
     }).join('');
     return [
@@ -91,7 +93,7 @@ function kartuPesananAntri(p) {
       barisKartu('PIC / Pemesan', p.nama_pemesan),
       barisKartu('WhatsApp / HP', p.no_hp),
       barisKartu('Alamat Penerima', p.alamat_kirim),
-      barisKartu('Dikirim', tanggalKirimSederhana(p.tanggal_kirim) + ' ' + jamSederhana(p.jam_maksimal)),
+      barisKartu('Dikirim', tanggalKirimSederhana(p.tanggal_kirim) + ' ' + ringkasJamItem(its, p.jam_maksimal)),
       p.catatan ? barisKartu('Catatan', p.catatan) : '',
       '<div class="pu-antri-item"><ul>' + (daftar || '<li>Rincian item tidak tersedia.</li>') + '</ul></div>',
       '<div class="pu-antri-total">Total: <b>' + formatRupiah(p.total_estimasi) + '</b></div>',

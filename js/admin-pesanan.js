@@ -121,7 +121,7 @@ function renderPesananTabel() {
           '<td class="whitespace-nowrap">' + tanggalIndo(p.created_at) + '<div>' + tagModePesanan(mode) + '</div></td>',
           '<td class="whitespace-nowrap font-semibold" style="color:var(--text-primary)">' + escapeHtml(p.nomor || '-') + '</td>',
           '<td style="max-width:200px; white-space:normal;">' + pemesan + '</td>',
-          '<td class="whitespace-nowrap text-xs">' + tanggalKirimSederhana(p.tanggal_kirim) + '<div style="color:var(--text-muted)">' + escapeHtml(jamSederhana(p.jam_maksimal)) + '</div></td>',
+          '<td class="whitespace-nowrap text-xs">' + tanggalKirimSederhana(p.tanggal_kirim) + '<div style="color:var(--text-muted)">' + escapeHtml(ringkasJamItem(p.items, p.jam_maksimal)) + '</div></td>',
           '<td style="max-width:220px; white-space:normal;" class="text-xs">' + (ringkasItem || '-') + '</td>',
           '<td class="whitespace-nowrap font-semibold">' + formatRupiah(p.total_estimasi) +
             ' <button class="btn-icon-sm" onclick="editTotalPesanan(\'' + id + '\')" title="Edit total"><i class="bi bi-pencil"></i></button></td>',
@@ -158,6 +158,18 @@ function jamSederhana(nilai) {
     const d = new Date(teks);
     if (!isNaN(d)) return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     return teks;
+}
+/**
+ * Ringkasan jam untuk satu pesanan. Kalau jam antar produknya berbeda, yang
+ * ditampilkan BUKAN satu jam melainkan penunjuk ke rinciannya - supaya Admin
+ * tidak meneruskan satu jam untuk seluruh pesanan.
+ */
+function ringkasJamItem(items, jamUmum) {
+    const daftar = (Array.isArray(items) ? items : []).map(function(i) { return i.jam_maksimal || ''; }).filter(Boolean);
+    if (!daftar.length) return jamSederhana(jamUmum);
+    const unik = daftar.filter(function(j, n) { return daftar.indexOf(j) === n; });
+    if (unik.length === 1 && daftar.length === items.length) return jamSederhana(unik[0]);
+    return 'jam berbeda per produk';
 }
 /** Ubah status bayar lewat dropdown di tabel. */
 function ubahStatusBayar(id, status) {
@@ -236,11 +248,13 @@ function lihatPesananAdmin(id) {
         return '<div class="flex gap-3 py-1" style="border-bottom:1px solid #f1f5f9;"><div class="text-xs font-bold" style="width:150px; flex:none; color:var(--text-muted);">' + label + '</div><div class="text-sm" style="color:var(--text-primary); white-space:pre-line;">' + (nilai ? escapeHtml(nilai) : '-') + '</div></div>';
     };
     const its = itemsPesanan(p);
-    const tabelItem = its.length ? ('<table class="data-table" style="margin-top:10px;"><thead><tr><th>Produk</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead><tbody>' +
+    const tabelItem = its.length ? ('<table class="data-table" style="margin-top:10px;"><thead><tr><th>Produk</th><th>Maks. Jam</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead><tbody>' +
         its.map(function(i) {
             const sub = (Number(i.harga_satuan) || 0) * (Number(i.qty) || 0);
+            const jamIt = i.jam_maksimal || p.jam_maksimal || '';
             return '<tr><td style="white-space:normal;">' + escapeHtml(i.nama_produk) + (i.model ? ' <span class="text-xs">[' + escapeHtml(i.model) + ']</span>' : '') + (i.warna ? ' <span class="text-xs">[' + escapeHtml(i.warna) + ']</span>' : '') +
                    '<div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(i.nama_umkm || '') + (i.catatan ? ' &middot; ' + escapeHtml(i.catatan) : '') + '</div></td>' +
+                   '<td class="whitespace-nowrap"><b>' + escapeHtml(jamSederhana(jamIt)) + '</b></td>' +
                    '<td class="whitespace-nowrap">' + i.qty + ' ' + escapeHtml(i.satuan || '') + '</td>' +
                    '<td class="whitespace-nowrap">' + formatRupiah(i.harga_satuan) + '</td>' +
                    '<td class="whitespace-nowrap">' + formatRupiah(sub) + '</td></tr>';
@@ -257,7 +271,7 @@ function lihatPesananAdmin(id) {
         baris('WhatsApp/HP', p.no_hp) +
         baris('Alamat Penerima', p.alamat_kirim) +
         baris('Tanggal dikirim', tanggalKirimSederhana(p.tanggal_kirim)) +
-        baris('Maksimal jam sampai', jamSederhana(p.jam_maksimal)) +
+        baris('Maksimal jam sampai', ringkasJamItem(its, p.jam_maksimal)) +
         baris('Catatan tambahan', p.catatan) +
         baris('Status bayar', p.status_bayar) +
         baris('Total', formatRupiah(p.total_estimasi)) +

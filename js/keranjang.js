@@ -41,11 +41,14 @@ function addToCart(id, nama, harga, satuan, umkm, qty, catatan, warna, mode, mod
     mode = mode === 'b2b' ? 'b2b' : 'b2c';
     // Baris digabung hanya kalau produk, catatan, warna, DAN mode-nya sama: harga grosir
     // dan harga ritel berbeda, jadi tidak boleh tercampur dalam satu baris.
-    const existing = AppState.cart.find(i => i.id === id && (i.catatan || '') === catatan && (i.warna || '') === warna && (i.model || '') === model && (i.mode || 'b2c') === mode && i.hargaSatuan === harga);
+    // Baris yang jamnya SUDAH diatur sendiri tidak ikut digabung. Dengan begitu
+    // produk yang sama bisa dipesan untuk dua jam berbeda: atur jam pada baris
+    // pertama, lalu tambahkan produk itu lagi - muncul sebagai baris baru.
+    const existing = AppState.cart.find(i => i.id === id && (i.catatan || '') === catatan && (i.warna || '') === warna && (i.model || '') === model && (i.mode || 'b2c') === mode && i.hargaSatuan === harga && !(i.jam || ''));
     if (existing)
         existing.qty += qty;
     else
-        AppState.cart.push({ id, nama, hargaSatuan: harga, satuan, umkm, qty, catatan, warna, model, mode });
+        AppState.cart.push({ id, nama, hargaSatuan: harga, satuan, umkm, qty, catatan, warna, model, mode, jam: '' });
     saveCartToStorage();
     showToast('Ditambahkan', nama + [warna, model].filter(Boolean).map(function(x) { return ' (' + x + ')'; }).join('') + ' masuk ke keranjang.', 'success');
 }
@@ -57,7 +60,7 @@ function renderKeranjangPage() {
         return;
     }
     const total = AppState.cart.reduce((s, i) => s + i.hargaSatuan * i.qty, 0);
-    container.innerHTML = ('\n    <div class="page-wrap" style="display:grid; gap:24px; grid-template-columns:1fr;" id="cartGridWrap">\n      <div>\n        <h1 class="text-xl font-extrabold mb-4" style="color:var(--text-primary)">Keranjang &amp; Pesanan</h1>\n        <div id="cartItemsWrap"></div>\n        <button class="btn-ghost mt-2" onclick="navigateTo(\'katalog\')"><i class="bi bi-plus-lg"></i> Tambah Produk Lain dari Katalog</button>\n        <div class="card p-4 mt-4 flex items-center justify-between">\n          <span class="font-bold" style="color:var(--text-primary)">Total Estimasi Di Bayar</span>\n          <span class="text-xl font-extrabold" style="color:var(--primary)">' + (formatRupiah(total)) + '</span>\n        </div>\n      </div>\n      <div>\n        <div class="card p-4 md:p-5"><div id="checkoutCardBody">\n          <h3 class="font-bold text-center mb-1" style="color:var(--text-primary)"><i class="bi bi-patch-check-fill" style="color:#16a34a;"></i> Data Pemesan</h3>\n          <p class="text-center text-xs mb-4" style="color:var(--text-muted)">Lengkapi data untuk membuat format pesanan resmi</p>\n          <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">\n            <div class="form-group" id="cfPerusahaanWrap">\n              <label class="form-label" id="cfPerusahaanLabel">Nama Perusahaan / Instansi (opsional)</label>\n              <input class="form-input" id="cfPerusahaan" maxlength="200" placeholder="PT / CV / Toko / Instansi">\n            </div>\n            <div class="form-group">\n              <label class="form-label" id="cfNamaLabel">PIC / Pemesan *</label>\n              <input class="form-input" id="cfNama" required placeholder="Nama orang yang dihubungi">\n            </div>\n            <div class="form-group">\n              <label class="form-label">Nomor WhatsApp / HP Aktif *</label>\n              <input class="form-input" id="cfHp" required placeholder="08xxxxxxxxxx">\n            </div>\n            <div class="form-group">\n              <label class="form-label">Alamat Pengiriman Lengkap *</label>\n              <textarea class="form-textarea" id="cfAlamat" required placeholder="Nama gedung, jalan, kecamatan, kota"></textarea>\n            </div>\n            <div class="grid grid-cols-2 gap-3">\n              <div class="form-group">\n                <label class="form-label">Tanggal Kirim *</label>\n                <input class="form-input" type="date" id="cfTanggal" required>\n              </div>\n              <div class="form-group">\n                <label class="form-label">Maks. Jam Sampai *</label>\n                <input class="form-input" type="time" id="cfJam" required>\n              </div>\n            </div>\n            <div class="form-group">\n              <label class="form-label">Catatan Tambahan (Opsional)</label>\n              <textarea class="form-textarea" id="cfCatatan" placeholder="Contoh: titip di resepsionis / tidak pakai pedas..."></textarea>\n            </div>\n            <button type="submit" class="btn-wa w-full" style="height:46px;"><i class="bi bi-whatsapp" style="font-size:18px;"></i> Kirim Pesanan via WhatsApp Admin</button>\n            <p class="text-center text-[11px] mt-2" style="color:var(--text-muted)">Langsung terhubung ke WhatsApp Admin - Tanpa Login</p>\n          </form></div>\n        </div>\n      </div>\n    </div>\n  ');
+    container.innerHTML = ('\n    <div class="page-wrap" style="display:grid; gap:24px; grid-template-columns:1fr;" id="cartGridWrap">\n      <div>\n        <h1 class="text-xl font-extrabold mb-4" style="color:var(--text-primary)">Keranjang &amp; Pesanan</h1>\n        <div id="cartItemsWrap"></div>\n        <button class="btn-ghost mt-2" onclick="navigateTo(\'katalog\')"><i class="bi bi-plus-lg"></i> Tambah Produk Lain dari Katalog</button>\n        <div class="card p-4 mt-4 flex items-center justify-between">\n          <span class="font-bold" style="color:var(--text-primary)">Total Estimasi Di Bayar</span>\n          <span class="text-xl font-extrabold" style="color:var(--primary)">' + (formatRupiah(total)) + '</span>\n        </div>\n      </div>\n      <div>\n        <div class="card p-4 md:p-5"><div id="checkoutCardBody">\n          <h3 class="font-bold text-center mb-1" style="color:var(--text-primary)"><i class="bi bi-patch-check-fill" style="color:#16a34a;"></i> Data Pemesan</h3>\n          <p class="text-center text-xs mb-4" style="color:var(--text-muted)">Lengkapi data untuk membuat format pesanan resmi</p>\n          <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">\n            <div class="form-group" id="cfPerusahaanWrap">\n              <label class="form-label" id="cfPerusahaanLabel">Nama Perusahaan / Instansi (opsional)</label>\n              <input class="form-input" id="cfPerusahaan" maxlength="200" placeholder="PT / CV / Toko / Instansi">\n            </div>\n            <div class="form-group">\n              <label class="form-label" id="cfNamaLabel">PIC / Pemesan *</label>\n              <input class="form-input" id="cfNama" required placeholder="Nama orang yang dihubungi">\n            </div>\n            <div class="form-group">\n              <label class="form-label">Nomor WhatsApp / HP Aktif *</label>\n              <input class="form-input" id="cfHp" required placeholder="08xxxxxxxxxx">\n            </div>\n            <div class="form-group">\n              <label class="form-label">Alamat Pengiriman Lengkap *</label>\n              <textarea class="form-textarea" id="cfAlamat" required placeholder="Nama gedung, jalan, kecamatan, kota"></textarea>\n            </div>\n            <div class="grid grid-cols-2 gap-3">\n              <div class="form-group">\n                <label class="form-label">Tanggal Kirim *</label>\n                <input class="form-input" type="date" id="cfTanggal" required>\n              </div>\n              <div class="form-group">\n                <label class="form-label">Maks. Jam Sampai (umum) *</label>\n                <input class="form-input" type="time" id="cfJam" required>\n              </div>\n            </div>\n            <div class="pu-jam-ringkas" id="cfJamRingkas"></div>\n            <div class="form-group">\n              <label class="form-label">Catatan Tambahan (Opsional)</label>\n              <textarea class="form-textarea" id="cfCatatan" placeholder="Contoh: titip di resepsionis / tidak pakai pedas..."></textarea>\n            </div>\n            <button type="submit" class="btn-wa w-full" style="height:46px;"><i class="bi bi-whatsapp" style="font-size:18px;"></i> Kirim Pesanan via WhatsApp Admin</button>\n            <p class="text-center text-[11px] mt-2" style="color:var(--text-muted)">Langsung terhubung ke WhatsApp Admin - Tanpa Login</p>\n          </form></div>\n        </div>\n      </div>\n    </div>\n  ');
     if (window.innerWidth >= 992)
         document.getElementById('cartGridWrap').style.gridTemplateColumns = '1.4fr 1fr';
     renderCartItems();
@@ -89,7 +92,66 @@ function renderCartItems() {
     const wrap = document.getElementById('cartItemsWrap');
     if (!wrap)
         return;
-    wrap.innerHTML = AppState.cart.map((item, idx) => ('\n    <div class="cart-item">\n      <div class="flex-1">\n        <div class="text-xs font-semibold" style="color:var(--primary)">' + (escapeHtml(item.umkm)) + '</div>\n        <div class="font-bold text-sm" style="color:var(--text-primary)">' + (escapeHtml(item.nama)) + '</div>\n        ' + (item.model ? ('<div class="text-xs mt-0.5" style="color:var(--text-body)"><i class="bi bi-images"></i> Model: <b>' + escapeHtml(item.model) + '</b></div>') : '') + (item.warna ? ('<div class="text-xs mt-0.5" style="color:var(--text-body)"><i class="bi bi-palette"></i> Warna: <b>' + escapeHtml(item.warna) + '</b></div>') : '') + (item.catatan ? ('<div class="text-xs mt-0.5" style="color:var(--text-muted)"><i class="bi bi-info-circle"></i> ' + escapeHtml(item.catatan) + '</div>') : '') + '\n        <div class="flex items-center justify-between mt-2 flex-wrap gap-2">\n          <div class="qty-stepper">\n            <button onclick="changeCartQty(' + (idx) + ', -1)">-</button>\n            <input type="number" min="1" class="qty-input" value="' + (item.qty) + '" onclick="event.stopPropagation()" onchange="setCartQty(' + (idx) + ', this.value)">\n            <button onclick="changeCartQty(' + (idx) + ', 1)">+</button>\n            <span class="px-2 text-xs" style="color:var(--text-muted)">' + (escapeHtml(item.satuan)) + '</span>\n          </div>\n          <div class="text-right">\n            <div class="text-xs" style="color:var(--text-muted)">' + (formatRupiah(item.hargaSatuan)) + ' / ' + (escapeHtml(item.satuan)) + '</div>\n            <div class="font-bold" style="color:var(--primary)">' + (formatRupiah(item.hargaSatuan * item.qty)) + '</div>\n          </div>\n        </div>\n      </div>\n      <button class="btn-icon-sm self-start" onclick="removeCartItem(' + (idx) + ')"><i class="bi bi-trash text-red-500"></i></button>\n    </div>\n  ')).join('');
+    wrap.innerHTML = AppState.cart.map(function(item, idx) {
+        return [
+          '<div class="cart-item">',
+          '<div class="flex-1">',
+          '<div class="text-xs font-semibold" style="color:var(--primary)">' + escapeHtml(item.umkm) + '</div>',
+          '<div class="font-bold text-sm" style="color:var(--text-primary)">' + escapeHtml(item.nama) + '</div>',
+          item.model ? ('<div class="text-xs mt-0.5" style="color:var(--text-body)"><i class="bi bi-images"></i> Model: <b>' + escapeHtml(item.model) + '</b></div>') : '',
+          item.warna ? ('<div class="text-xs mt-0.5" style="color:var(--text-body)"><i class="bi bi-palette"></i> Warna: <b>' + escapeHtml(item.warna) + '</b></div>') : '',
+          item.catatan ? ('<div class="text-xs mt-0.5" style="color:var(--text-muted)"><i class="bi bi-info-circle"></i> ' + escapeHtml(item.catatan) + '</div>') : '',
+          '<div class="flex items-center justify-between mt-2 flex-wrap gap-2">',
+          '<div class="qty-stepper">',
+          '<button onclick="changeCartQty(' + idx + ', -1)">-</button>',
+          '<input type="number" min="1" class="qty-input" value="' + item.qty + '" onclick="event.stopPropagation()" onchange="setCartQty(' + idx + ', this.value)">',
+          '<button onclick="changeCartQty(' + idx + ', 1)">+</button>',
+          '<span class="px-2 text-xs" style="color:var(--text-muted)">' + escapeHtml(item.satuan) + '</span>',
+          '</div>',
+          '<div class="text-right">',
+          '<div class="text-xs" style="color:var(--text-muted)">' + formatRupiah(item.hargaSatuan) + ' / ' + escapeHtml(item.satuan) + '</div>',
+          '<div class="font-bold" style="color:var(--primary)">' + formatRupiah(item.hargaSatuan * item.qty) + '</div>',
+          '</div>',
+          '</div>',
+          // Jam sampai khusus produk ini. Dikosongkan = ikut jam umum di form pemesan.
+          '<div class="pu-jam-item">',
+          '<label for="cartJam' + idx + '"><i class="bi bi-clock"></i> Maks. jam sampai</label>',
+          '<input type="time" id="cartJam' + idx + '" class="form-input pu-jam-input" value="' + escapeAttr(item.jam || '') + '"',
+          ' onclick="event.stopPropagation()" onchange="setCartJam(' + idx + ', this.value)">',
+          (item.jam ? '<button type="button" class="pu-jam-reset" onclick="setCartJam(' + idx + ', \'\')">Ikut jam umum</button>'
+                    : '<span class="pu-jam-info">ikut jam umum</span>'),
+          '</div>',
+          '</div>',
+          '<button class="btn-icon-sm self-start" onclick="removeCartItem(' + idx + ')"><i class="bi bi-trash text-red-500"></i></button>',
+          '</div>'
+        ].join('');
+    }).join('');
+    perbaruiRingkasanJam();
+}
+/** Simpan jam khusus satu produk. Kosong berarti produk itu ikut jam umum. */
+function setCartJam(idx, nilai) {
+    if (!AppState.cart[idx]) return;
+    AppState.cart[idx].jam = String(nilai || '').trim();
+    saveCartToStorage();
+    renderCartItems();
+}
+/**
+ * Keterangan di bawah kolom jam umum. Tujuannya supaya customer tahu persis
+ * produk mana yang jamnya sudah diatur sendiri, sebelum pesanan dikirim.
+ */
+function perbaruiRingkasanJam() {
+    const el = document.getElementById('cfJamRingkas');
+    if (!el) return;
+    const khusus = AppState.cart.filter(function(i) { return i.jam; });
+    if (!khusus.length) {
+        el.innerHTML = 'Berlaku untuk semua produk. Kalau ada produk yang jam sampainya berbeda, atur pada produknya di keranjang.';
+        el.className = 'pu-jam-ringkas';
+        return;
+    }
+    el.innerHTML = '<b>Jam berbeda per produk:</b> ' + khusus.map(function(i) {
+        return escapeHtml(i.nama) + ' maks. ' + escapeHtml(i.jam);
+    }).join('; ') + '. Produk lainnya memakai jam umum di atas.';
+    el.className = 'pu-jam-ringkas pu-jam-ringkas-aktif';
 }
 function changeCartQty(idx, delta) {
     AppState.cart[idx].qty = Math.max(1, AppState.cart[idx].qty + delta);
@@ -131,12 +193,16 @@ function handleCheckoutSubmit(e) {
         showToast('Peringatan', 'Keranjang masih kosong.', 'warning');
         return;
     }
-    const rincianTampilan = AppState.cart.map(i => (i.nama + ' x' + i.qty + i.satuan + '\n   UMKM: ' + i.umkm + (i.model ? ('\n   Model: ' + i.model) : '') + (i.warna ? ('\n   Warna: ' + i.warna) : '') + (i.catatan ? ('\n   Catatan: ' + i.catatan) : ''))).join('\n\n');
+    // Jam ditulis pada SETIAP item, bukan hanya yang berbeda. UMKM dan kurir
+    // membaca barisnya masing-masing, jadi tiap baris harus bisa dibaca sendiri.
+    const rincianTampilan = AppState.cart.map(i => (i.nama + ' x' + i.qty + i.satuan + '\n   UMKM: ' + i.umkm + (i.model ? ('\n   Model: ' + i.model) : '') + (i.warna ? ('\n   Warna: ' + i.warna) : '') + '\n   Maks. jam sampai: ' + (i.jam || jam) + (i.catatan ? ('\n   Catatan: ' + i.catatan) : ''))).join('\n\n');
     const total = AppState.cart.reduce((s, i) => s + i.hargaSatuan * i.qty, 0);
     const items = AppState.cart.map(i => ({
         produk_id: i.id, nama_produk: i.nama, nama_umkm: i.umkm,
-        qty: i.qty, satuan: i.satuan, harga_satuan: i.hargaSatuan, catatan: i.catatan || '', warna: i.warna || '', model: i.model || ''
+        qty: i.qty, satuan: i.satuan, harga_satuan: i.hargaSatuan, catatan: i.catatan || '', warna: i.warna || '', model: i.model || '',
+        jam_maksimal: i.jam || jam
     }));
+    const jamBeda = AppState.cart.some(function(i) { return i.jam && i.jam !== jam; });
     const btn = e.target.querySelector('button[type="submit"]');
     const original = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-inline"></span> Memproses...';
@@ -154,7 +220,7 @@ function handleCheckoutSubmit(e) {
         }
         AppState.cart = [];
         saveCartToStorage();
-        tampilkanKonfirmasiWhatsApp({ nama, perusahaan, hp, alamat, tanggal, jam, catatan, rincian: rincianTampilan, total, mode, nomor: (res.data && res.data.nomor) || '' });
+        tampilkanKonfirmasiWhatsApp({ nama, perusahaan, hp, alamat, tanggal, jam, jamBeda, catatan, rincian: rincianTampilan, total, mode, nomor: (res.data && res.data.nomor) || '' });
     });
 }
 /**
@@ -173,7 +239,11 @@ function tampilkanKonfirmasiWhatsApp(order) {
     text += ('*No. HP:* ' + (order.hp) + '\n');
     text += ('*Alamat Kirim:* ' + (order.alamat) + '\n');
     text += ('*Tanggal Kirim:* ' + (order.tanggal) + '\n');
-    text += ('*Maks. Jam Sampai:* ' + (order.jam) + '\n');
+    // Kalau ada produk yang jamnya sendiri, jam umum TIDAK ditulis sebagai satu
+    // angka supaya pembaca tidak memakainya untuk seluruh pesanan.
+    text += (order.jamBeda
+        ? '*Maks. Jam Sampai:* berbeda per produk - lihat rincian di atas\n'
+        : ('*Maks. Jam Sampai:* ' + (order.jam) + '\n'));
     if (order.catatan)
         text += ('*Catatan:* ' + (order.catatan) + '\n');
     const url = waNumber ? ('https://wa.me/' + waNumber + '?text=' + encodeURIComponent(text)) : '';
