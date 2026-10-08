@@ -160,6 +160,20 @@ function jamSederhana(nilai) {
     return teks;
 }
 /**
+ * Rincian menu pada satu item pesanan. Kalau customer menggantinya, tampilannya
+ * ditandai tegas beserta menu standar paketnya - supaya Admin tidak meneruskan
+ * menu standar ke UMKM padahal yang dipesan sudah berbeda.
+ */
+function blokMenuAdmin(i) {
+    if (!i || !i.menu) return '';
+    const asli = String(i.menu_asli || '').trim();
+    const diubah = asli && asli !== String(i.menu).trim();
+    if (!diubah) return '<div class="pu-menu-baris"><i class="bi bi-list-ul"></i> ' + escapeHtml(i.menu) + '</div>';
+    return '<div class="pu-menu-baris pu-menu-baris-ubah">' +
+           '<span class="pu-menu-badge">menu diubah</span> ' + escapeHtml(i.menu) +
+           '<div class="pu-menu-asli-adm">Standar paket: ' + escapeHtml(asli) + '</div></div>';
+}
+/**
  * Ringkasan jam untuk satu pesanan. Kalau jam antar produknya berbeda, yang
  * ditampilkan BUKAN satu jam melainkan penunjuk ke rinciannya - supaya Admin
  * tidak meneruskan satu jam untuk seluruh pesanan.
@@ -253,6 +267,7 @@ function lihatPesananAdmin(id) {
             const sub = (Number(i.harga_satuan) || 0) * (Number(i.qty) || 0);
             const jamIt = i.jam_maksimal || p.jam_maksimal || '';
             return '<tr><td style="white-space:normal;">' + escapeHtml(i.nama_produk) + (i.model ? ' <span class="text-xs">[' + escapeHtml(i.model) + ']</span>' : '') + (i.warna ? ' <span class="text-xs">[' + escapeHtml(i.warna) + ']</span>' : '') +
+                   blokMenuAdmin(i) +
                    '<div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(i.nama_umkm || '') + (i.catatan ? ' &middot; ' + escapeHtml(i.catatan) : '') + '</div></td>' +
                    '<td class="whitespace-nowrap"><b>' + escapeHtml(jamSederhana(jamIt)) + '</b></td>' +
                    '<td class="whitespace-nowrap">' + i.qty + ' ' + escapeHtml(i.satuan || '') + '</td>' +

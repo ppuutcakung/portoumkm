@@ -259,6 +259,10 @@ function susunDokumenInvoice(p) {
             // Jam dicetak sebagai barisnya sendiri, bukan digabung ke keterangan,
             // supaya tidak terlewat saat UMKM dan kurir membaca dokumennya.
             jam: i.jam_maksimal || p.jam_maksimal || '',
+            // Menu dicetak sebagai barisnya sendiri. Kalau diubah customer, menu
+            // standarnya ikut dicetak supaya UMKM tahu persis apa yang diganti.
+            menu: i.menu || '',
+            menuAsli: (i.menu_asli && String(i.menu_asli).trim() !== String(i.menu || '').trim()) ? i.menu_asli : '',
             ket: [i.nama_umkm || '', i.model ? ('Model: ' + i.model) : '', i.warna ? ('Warna: ' + i.warna) : '', i.catatan || ''].filter(Boolean).join(' | '),
             qty: qty + (i.satuan ? ' ' + i.satuan : ''),
             harga: rupiahPdf(harga),
@@ -383,9 +387,13 @@ function gambarDokumenInvoice(pdf, doc, opsi) {
         const nama = bungkusTeks(pdf, bersihkanTeksPdf(it.nama), WP - 3);
         pdf.font('normal', 7.5);
         const ket = it.ket ? bungkusTeks(pdf, bersihkanTeksPdf(it.ket), WP - 3) : [];
-        // Baris jam diberi tempatnya sendiri di bawah nama produk.
+        // Baris jam & rincian menu diberi tempatnya sendiri di bawah nama produk.
         const barisJam = it.jam ? 4.2 : 0;
-        const h = nama.length * LH + barisJam + ket.length * 3.6 + 3.5;
+        pdf.font('bold', 8);
+        const menu = it.menu ? bungkusTeks(pdf, bersihkanTeksPdf((it.menuAsli ? 'Menu (DIUBAH): ' : 'Menu: ') + it.menu), WP - 3) : [];
+        pdf.font('normal', 7.5);
+        const asli = it.menuAsli ? bungkusTeks(pdf, bersihkanTeksPdf('Menu standar paket: ' + it.menuAsli), WP - 3) : [];
+        const h = nama.length * LH + barisJam + menu.length * 4 + asli.length * 3.6 + ket.length * 3.6 + 3.5;
         pastikanRuang(h + 2);
         pdf.font('normal', 9); pdf.warnaTeks(TEKS);
         nama.forEach(function(l, i) { pdf.teks(l, M + 1, y + 4.4 + i * LH); });
@@ -394,6 +402,18 @@ function gambarDokumenInvoice(pdf, doc, opsi) {
             pdf.font('bold', 8); pdf.warnaTeks(aksen);
             pdf.teks('Maks. jam sampai: ' + bersihkanTeksPdf(it.jam), M + 1, yIsi + 0.6);
             yIsi += barisJam;
+        }
+        if (menu.length) {
+            // Menu yang diubah dicetak GELAP + tebal supaya tidak terbaca sebagai
+            // keterangan biasa; yang tidak diubah cukup abu-abu.
+            pdf.font('bold', 8); pdf.warnaTeks(it.menuAsli ? GELAP : REDUP);
+            menu.forEach(function(l, i) { pdf.teks(l, M + 1, yIsi + 0.6 + i * 4); });
+            yIsi += menu.length * 4;
+        }
+        if (asli.length) {
+            pdf.font('normal', 7.5); pdf.warnaTeks(REDUP);
+            asli.forEach(function(l, i) { pdf.teks(l, M + 1, yIsi + i * 3.6); });
+            yIsi += asli.length * 3.6;
         }
         pdf.font('normal', 7.5); pdf.warnaTeks(REDUP);
         ket.forEach(function(l, i) { pdf.teks(l, M + 1, yIsi + i * 3.6); });
@@ -426,8 +446,10 @@ function gambarDokumenInvoice(pdf, doc, opsi) {
         y += LH;
     });
     y += 6;
-    // tanda tangan
-    pastikanRuang(36);
+    // Tanda tangan. Ruang yang dicadangkan = tinggi isinya saja (nama berakhir di
+    // +31.5), BUKAN termasuk jarak sesudah blok - kalau ikut dihitung, blok ini
+    // bisa terlempar sendirian ke halaman baru padahal di halaman ini masih muat.
+    pastikanRuang(33);
     const bw = (CW - 12) / 2;
     [['Pemesan', doc.namaTtd ? bersihkanTeksPdf(doc.namaTtd) : '(nama jelas)'], ['Admin / Penerima Pesanan', 'Admin ' + namaApp]].forEach(function(t, i) {
         const x = M + i * (bw + 12);

@@ -495,3 +495,101 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
     .pu-jam-item > label { font-size: 11px; }
     .pu-jam-input.form-input { width: 100px; height: 36px; }
 }
+
+/* ============================================================
+   RINCIAN MENU PAKET YANG BISA DIUBAH CUSTOMER
+   Hanya pada baris keranjang & pesanan. Menu standar di kartu
+   produk tidak pernah ikut berubah.
+   ============================================================ */
+.pu-menu-edit {
+    margin-top: 8px;
+    padding: 8px 9px;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+    background: #f8fafc;
+}
+.pu-menu-edit.pu-menu-diubah {
+    background: #fffbeb;
+    border-color: #fcd34d;
+}
+.pu-menu-kepala {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+.pu-menu-badge {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #92400e;
+    background: #fde68a;
+    border-radius: 999px;
+    padding: 1px 8px;
+}
+.pu-menu-teks {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-primary);
+    background: #fff;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+.pu-menu-teks:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, .14);
+}
+.pu-menu-bantuan,
+.pu-menu-asli {
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+.pu-menu-reset {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+/* Tampilan di halaman Admin (rincian item) */
+.pu-menu-baris {
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--text-body);
+    margin-top: 3px;
+}
+.pu-menu-baris-ubah {
+    background: #fffbeb;
+    border-left: 3px solid #f59e0b;
+    border-radius: 0 6px 6px 0;
+    padding: 5px 8px;
+    color: var(--text-primary);
+}
+.pu-menu-asli-adm {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+@media (max-width: 720px) {
+    .pu-menu-edit { padding: 7px; }
+    .pu-menu-teks { font-size: 12px; }
+}

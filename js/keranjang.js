@@ -33,22 +33,27 @@ function updateCartBadge() {
  *   terpisah di keranjang (mis. "Snack Box - Paket A" dan "Snack Box -
  *   Paket B" dari produk yang sama, tidak digabung jadi satu baris).
  */
-function addToCart(id, nama, harga, satuan, umkm, qty, catatan, warna, mode, model) {
+function addToCart(id, nama, harga, satuan, umkm, qty, catatan, warna, mode, model, menu) {
     qty = Math.max(1, parseInt(qty, 10) || 1);
     catatan = catatan || '';
     warna = warna || '';
     model = model || '';
+    menu = menu || '';
     mode = mode === 'b2b' ? 'b2b' : 'b2c';
     // Baris digabung hanya kalau produk, catatan, warna, DAN mode-nya sama: harga grosir
     // dan harga ritel berbeda, jadi tidak boleh tercampur dalam satu baris.
     // Baris yang jamnya SUDAH diatur sendiri tidak ikut digabung. Dengan begitu
     // produk yang sama bisa dipesan untuk dua jam berbeda: atur jam pada baris
     // pertama, lalu tambahkan produk itu lagi - muncul sebagai baris baru.
-    const existing = AppState.cart.find(i => i.id === id && (i.catatan || '') === catatan && (i.warna || '') === warna && (i.model || '') === model && (i.mode || 'b2c') === mode && i.hargaSatuan === harga && !(i.jam || ''));
+    // menuAsli disimpan terpisah sebagai menu STANDAR paket. Isinya tidak pernah
+    // ikut berubah saat customer mengedit, jadi selalu ada pembanding.
+    // Menu ikut jadi penentu baris: dua paket berbeda dari produk yang sama
+    // harus tetap terpisah walaupun harganya kebetulan sama.
+    const existing = AppState.cart.find(i => i.id === id && (i.catatan || '') === catatan && (i.warna || '') === warna && (i.model || '') === model && (i.menuAsli || '') === menu && (i.mode || 'b2c') === mode && i.hargaSatuan === harga && !(i.jam || '') && !menuDiubah(i));
     if (existing)
         existing.qty += qty;
     else
-        AppState.cart.push({ id, nama, hargaSatuan: harga, satuan, umkm, qty, catatan, warna, model, mode, jam: '' });
+        AppState.cart.push({ id, nama, hargaSatuan: harga, satuan, umkm, qty, catatan, warna, model, mode, jam: '', menu: menu, menuAsli: menu });
     saveCartToStorage();
     showToast('Ditambahkan', nama + [warna, model].filter(Boolean).map(function(x) { return ' (' + x + ')'; }).join('') + ' masuk ke keranjang.', 'success');
 }
@@ -101,6 +106,7 @@ function renderCartItems() {
           item.model ? ('<div class="text-xs mt-0.5" style="color:var(--text-body)"><i class="bi bi-images"></i> Model: <b>' + escapeHtml(item.model) + '</b></div>') : '',
           item.warna ? ('<div class="text-xs mt-0.5" style="color:var(--text-body)"><i class="bi bi-palette"></i> Warna: <b>' + escapeHtml(item.warna) + '</b></div>') : '',
           item.catatan ? ('<div class="text-xs mt-0.5" style="color:var(--text-muted)"><i class="bi bi-info-circle"></i> ' + escapeHtml(item.catatan) + '</div>') : '',
+          blokMenuKeranjang(item, idx),
           '<div class="flex items-center justify-between mt-2 flex-wrap gap-2">',
           '<div class="qty-stepper">',
           '<button onclick="changeCartQty(' + idx + ', -1)">-</button>',
@@ -127,6 +133,51 @@ function renderCartItems() {
         ].join('');
     }).join('');
     perbaruiRingkasanJam();
+}
+/** Benar bila customer sudah mengubah rincian menu paket ini. */
+function menuDiubah(item) {
+    if (!item || !item.menuAsli) return false;
+    return String(item.menu || '').trim() !== String(item.menuAsli || '').trim();
+}
+/**
+ * Rincian menu paket yang bisa diketik ulang customer. Yang berubah HANYA
+ * baris keranjang ini - menu standar pada kartu produk tidak tersentuh,
+ * karena menu standarnya disimpan terpisah di menuAsli dan tidak pernah ditulis
+ * balik ke database.
+ */
+function blokMenuKeranjang(item, idx) {
+    if (!item.menuAsli) return '';          // produk tanpa paket: tidak ada yang diedit
+    const diubah = menuDiubah(item);
+    return [
+      '<div class="pu-menu-edit' + (diubah ? ' pu-menu-diubah' : '') + '">',
+      '<div class="pu-menu-kepala">',
+      '<span><i class="bi bi-list-ul"></i> Rincian menu</span>',
+      diubah ? '<span class="pu-menu-badge">diubah</span>' : '',
+      '</div>',
+      '<textarea class="pu-menu-teks" rows="2" maxlength="1000"',
+      ' placeholder="Tulis rincian menu yang Anda inginkan"',
+      ' onclick="event.stopPropagation()" onchange="setCartMenu(' + idx + ', this.value)">' + escapeHtml(item.menu || '') + '</textarea>',
+      diubah
+        ? ('<div class="pu-menu-asli">Menu standar: ' + escapeHtml(item.menuAsli) +
+           ' <button type="button" class="pu-menu-reset" onclick="resetCartMenu(' + idx + ')">Kembalikan</button></div>')
+        : '<div class="pu-menu-bantuan">Boleh diubah bila ada menu yang ingin diganti, misalnya telor balado diganti telor dadar.</div>',
+      '</div>'
+    ].join('');
+}
+/** Simpan rincian menu hasil ketikan customer untuk baris ini saja. */
+function setCartMenu(idx, nilai) {
+    if (!AppState.cart[idx]) return;
+    const teks = String(nilai || '').trim();
+    // Dikosongkan sama saja dengan memakai menu standarnya kembali.
+    AppState.cart[idx].menu = teks || AppState.cart[idx].menuAsli;
+    saveCartToStorage();
+    renderCartItems();
+}
+function resetCartMenu(idx) {
+    if (!AppState.cart[idx]) return;
+    AppState.cart[idx].menu = AppState.cart[idx].menuAsli;
+    saveCartToStorage();
+    renderCartItems();
 }
 /** Simpan jam khusus satu produk. Kosong berarti produk itu ikut jam umum. */
 function setCartJam(idx, nilai) {
@@ -195,12 +246,20 @@ function handleCheckoutSubmit(e) {
     }
     // Jam ditulis pada SETIAP item, bukan hanya yang berbeda. UMKM dan kurir
     // membaca barisnya masing-masing, jadi tiap baris harus bisa dibaca sendiri.
-    const rincianTampilan = AppState.cart.map(i => (i.nama + ' x' + i.qty + i.satuan + '\n   UMKM: ' + i.umkm + (i.model ? ('\n   Model: ' + i.model) : '') + (i.warna ? ('\n   Warna: ' + i.warna) : '') + '\n   Maks. jam sampai: ' + (i.jam || jam) + (i.catatan ? ('\n   Catatan: ' + i.catatan) : ''))).join('\n\n');
+    // Menu yang diubah ditulis dengan penanda jelas plus menu standarnya, supaya
+    // Admin dan UMKM langsung tahu bagian mana yang diganti.
+    const rincianTampilan = AppState.cart.map(i => (i.nama + ' x' + i.qty + i.satuan + '\n   UMKM: ' + i.umkm
+        + (i.model ? ('\n   Model: ' + i.model) : '')
+        + (i.warna ? ('\n   Warna: ' + i.warna) : '')
+        + (i.menu ? ('\n   Menu: ' + i.menu) : '')
+        + (menuDiubah(i) ? ('\n   *MENU DIUBAH* (standar: ' + i.menuAsli + ')') : '')
+        + '\n   Maks. jam sampai: ' + (i.jam || jam)
+        + (i.catatan ? ('\n   Catatan: ' + i.catatan) : ''))).join('\n\n');
     const total = AppState.cart.reduce((s, i) => s + i.hargaSatuan * i.qty, 0);
     const items = AppState.cart.map(i => ({
         produk_id: i.id, nama_produk: i.nama, nama_umkm: i.umkm,
         qty: i.qty, satuan: i.satuan, harga_satuan: i.hargaSatuan, catatan: i.catatan || '', warna: i.warna || '', model: i.model || '',
-        jam_maksimal: i.jam || jam
+        jam_maksimal: i.jam || jam, menu: i.menu || '', menu_asli: i.menuAsli || ''
     }));
     const jamBeda = AppState.cart.some(function(i) { return i.jam && i.jam !== jam; });
     const btn = e.target.querySelector('button[type="submit"]');

@@ -84,6 +84,7 @@ function kartuPesananAntri(p) {
                ' &times;' + i.qty + ' ' + escapeHtml(i.satuan || '') +
                ' &middot; ' + formatRupiah((Number(i.harga_satuan) || 0) * (Number(i.qty) || 0)) +
                (jam ? '<div class="pu-jam-tag"><i class="bi bi-clock"></i> Maks. jam sampai <b>' + escapeHtml(jamSederhana(jam)) + '</b></div>' : '') +
+               blokMenuAdmin(i) +
                (i.catatan ? '<div class="text-xs" style="color:var(--text-muted)">' + escapeHtml(i.catatan) + '</div>' : '') + '</li>';
     }).join('');
     return [

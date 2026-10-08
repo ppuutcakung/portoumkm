@@ -551,8 +551,10 @@ function puTambahKeranjang() {
     const p = d.p;
     const pk = (d.paketIdx !== null && d.paketIdx !== undefined) ? d.paket[d.paketIdx] : null;
     const nama = pk ? (p.nama_produk + ' - ' + pk.nama_paket) : p.nama_produk;
-    const catatan = pk ? (pk.deskripsi_menu || '') : '';
-    addToCart(p.id, nama, puHargaSatuanAktif(), p.satuan || 'pcs', p.nama_umkm, d.qty, catatan, d.warna, d.mode, d.model);
+    // Rincian menu paket masuk ke kolomnya sendiri (bukan ke catatan) supaya
+    // bisa diubah customer di keranjang tanpa menyentuh menu standar produknya.
+    const menu = pk ? (pk.deskripsi_menu || '') : '';
+    addToCart(p.id, nama, puHargaSatuanAktif(), p.satuan || 'pcs', p.nama_umkm, d.qty, '', d.warna, d.mode, d.model, menu);
     tutupDetailProduk();
 }
 function puPesanCustom() {
