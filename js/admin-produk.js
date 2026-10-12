@@ -293,7 +293,7 @@ function openProdukForm(p) {
       '<div id="pfGrosirSection" class="hidden" style="margin-top:10px;">',
       '<div id="pfRfqWrap" class="hidden" style="margin-bottom:10px;">',
       '<label class="pf-cek"><input type="checkbox" id="pfTampilkanRfq" ', (p.tampilkan_rfq === false ? '' : 'checked'), ' onchange="perbaruiAturanForm()"> Tampilkan tombol "Ajukan RFQ B2B"</label>',
-      '<p class="pf-foto-info">Produk Kuliner &amp; Pertanian bisa dipesan langsung karena harganya sudah tetap. Centang ini tetap menyediakan jalur pengajuan harga khusus (RFQ). Untuk Kerajinan, RFQ selalu tampil dan tidak bisa dimatikan.</p>',
+      '<p class="pf-foto-info">Produk Kuliner, Pertanian, dan Kerajinan bisa dipesan langsung di mode Grosir, <b>asalkan harga grosirnya sudah diisi</b> &mdash; lewat tier harga bertingkat di bawah, atau lewat harga paket. Selama harga grosir masih kosong, tombol "Pesan Langsung" tidak muncul dan pembelian tetap lewat RFQ, supaya pembeli grosir tidak memesan dengan harga eceran. Centang ini menyediakan jalur RFQ sebagai tambahan.</p>',
       '</div>',
       '<div class="form-group"><label class="form-label">MOQ Grosir (jumlah minimal order)</label><input class="form-input" type="number" min="1" id="pfMoq" value="', escapeAttr(p.moq_grosir || ''), '" placeholder="mis. 10">',
       '<p class="pf-foto-info">Kalau Anda mengisi tier harga di bawah, MOQ otomatis mengikuti jumlah tier pertama.</p></div>',

@@ -103,14 +103,41 @@ function terapkanWarnaTema() {
 }
 
 // -------------------- ATURAN PESAN LANGSUNG / RFQ DI MODE GROSIR --------------------
-/** Kuliner & Pertanian: harga sudah tetap, jadi boleh dipesan langsung di mode Grosir. */
-const KATEGORI_PESAN_LANGSUNG = ['PortoRasa', 'PortoTani'];
+/** Sektor yang boleh dipesan langsung di mode Grosir (Kuliner, Pertanian, Kerajinan). */
+const KATEGORI_PESAN_LANGSUNG = ['PortoRasa', 'PortoTani', 'PortoKriya'];
 function bolehPesanLangsungB2b(p) {
     return KATEGORI_PESAN_LANGSUNG.indexOf(p.kategori) !== -1;
 }
-/** Kerajinan selalu lewat RFQ; Kuliner/Pertanian mengikuti centang Admin (default tampil). */
-function tampilkanRfq(p) {
-    if (!bolehPesanLangsungB2b(p)) return true;
+/**
+ * Pesan langsung butuh HARGA GROSIR yang benar-benar ada: tier bertingkat, atau
+ * paket yang punya harga sendiri. Tanpa itu perhitungan jatuh ke harga RITEL,
+ * sehingga pembeli grosir bisa memesan ratusan unit dengan harga eceran tanpa
+ * ada tanda apa pun. Produk seperti itu tetap lewat RFQ sampai Admin mengisi
+ * harga grosirnya.
+ */
+function adaHargaGrosir(p, tiers, paket) {
+    if (Array.isArray(tiers) && tiers.length) return true;
+    return (Array.isArray(paket) ? paket : []).some(function(pk) {
+        return pk && pk.harga !== null && pk.harga !== undefined && pk.harga !== '';
+    });
+}
+/** Keputusan lengkap di popup Detail: sektornya boleh DAN harga grosirnya ada. */
+function bisaPesanLangsung(p, tiers, paket) {
+    return bolehPesanLangsungB2b(p) && adaHargaGrosir(p, tiers, paket);
+}
+/**
+ * Versi untuk KARTU produk, yang datanya belum memuat rincian paket. Dipakai
+ * grosir_min (harga tier terendah) dari daftar produk; produk bertipe Paket
+ * diputuskan nanti di popup karena harganya ada di paketnya.
+ */
+function bisaPesanLangsungKartu(p) {
+    if (!bolehPesanLangsungB2b(p)) return false;
+    const adaTier = p.grosir_min !== null && p.grosir_min !== undefined && p.grosir_min !== '';
+    return adaTier || p.tipe_pemesanan === 'Paket';
+}
+/** RFQ selalu tersedia bila produk belum bisa dipesan langsung; selebihnya ikut centang Admin. */
+function tampilkanRfq(p, tiers, paket) {
+    if (!bisaPesanLangsung(p, tiers, paket)) return true;
     return p.tampilkan_rfq !== false;
 }
 
@@ -287,8 +314,8 @@ function renderDetailProduk() {
             baris += '<tr data-tier="' + i + '"><td>' + escapeHtml(labelRentangTier(d.tiers, i, satuan)) + '</td><td class="pu-td-harga pu-td-grosir">' + formatRupiah(t.harga) + '</td><td class="pu-td-ket">' + escapeHtml(t.keterangan) + '</td></tr>';
         });
         if (!d.tiers.length) {
-            baris = '<tr><td colspan="3" class="pu-td-ket" style="padding:10px 0;">' + (bolehPesanLangsungB2b(p)
-                ? 'Belum ada skema harga bertingkat. Harga mengikuti harga satuan di bawah.'
+            baris = '<tr><td colspan="3" class="pu-td-ket" style="padding:10px 0;">' + (bisaPesanLangsung(p, d.tiers, d.paket)
+                ? 'Belum ada skema harga bertingkat. Harga mengikuti harga paket yang dipilih.'
                 : 'Harga grosir ditentukan lewat penawaran resmi (RFQ).') + '</td></tr>';
         }
         harga = '<div class="pu-tier-box"><div class="pu-tier-head"><span><i class="bi bi-layers-fill"></i> SKEMA HARGA GROSIR BERTINGKAT (B2B)</span><span class="pu-moq-badge">Minimum MOQ: ' + moq + '</span></div>' +
@@ -355,11 +382,12 @@ function renderDetailProduk() {
     const tombolWa = wa ? '<a class="btn-icon-sm pu-wa" href="' + escapeAttr(wa) + '" target="_blank" rel="noopener" title="Tanya Admin via WhatsApp"><i class="bi bi-whatsapp"></i></a>' : '';
     let aksi = '';
     if (b2b) {
-        if (bolehPesanLangsungB2b(p)) {
+        const langsung = bisaPesanLangsung(p, d.tiers, d.paket);
+        if (langsung) {
             aksi += '<button type="button" class="btn-primary" onclick="puTambahKeranjang()"><i class="bi bi-cart-plus"></i> Pesan Langsung</button>';
         }
-        if (tampilkanRfq(p)) {
-            aksi += '<button type="button" class="' + (bolehPesanLangsungB2b(p) ? 'pu-btn-dark' : 'btn-primary') + '" onclick="puAjukanRfq()"><i class="bi bi-file-earmark-text"></i> Ajukan RFQ B2B</button>';
+        if (tampilkanRfq(p, d.tiers, d.paket)) {
+            aksi += '<button type="button" class="' + (langsung ? 'pu-btn-dark' : 'btn-primary') + '" onclick="puAjukanRfq()"><i class="bi bi-file-earmark-text"></i> Ajukan RFQ B2B</button>';
         }
         aksi += '<button type="button" class="btn-ghost" onclick="puMintaSampel()"><i class="bi bi-box-seam"></i> Minta Sampel</button>';
     } else if (tipe === 'Custom') {
@@ -505,8 +533,8 @@ function puHitungUlang() {
         const pkAktif = (d.paketIdx !== null && d.paketIdx !== undefined) ? d.paket[d.paketIdx] : null;
         const hargaDariPaket = pkAktif && pkAktif.harga !== null && pkAktif.harga !== undefined && pkAktif.harga !== '';
         if (hargaDariPaket) { warn = 'Harga mengikuti paket "' + pkAktif.nama_paket + '", bukan tabel harga bertingkat.'; aktifIdx = null; }
-        else if (!h.adaTier && !bolehPesanLangsungB2b(p)) warn = 'Harga grosir ditentukan lewat penawaran resmi (RFQ). Angka di atas hanya acuan harga ritel.';
-        else if (h.dibawahMoq) warn = 'Jumlah di bawah MOQ grosir (' + moqProduk(p, d.tiers) + ' ' + satuan + ').' + (bolehPesanLangsungB2b(p) ? ' Pesanan langsung minimal sebesar MOQ.' : ' Pengajuan RFQ minimal sebesar MOQ.');
+        else if (!h.adaTier && !bisaPesanLangsung(p, d.tiers, d.paket)) warn = 'Harga grosir ditentukan lewat penawaran resmi (RFQ). Angka di atas hanya acuan harga ritel.';
+        else if (h.dibawahMoq) warn = 'Jumlah di bawah MOQ grosir (' + moqProduk(p, d.tiers) + ' ' + satuan + ').' + (bisaPesanLangsung(p, d.tiers, d.paket) ? ' Pesanan langsung minimal sebesar MOQ.' : ' Pengajuan RFQ minimal sebesar MOQ.');
     }
     if (elTotal) elTotal.textContent = formatRupiah(harga * qty);
     if (elSub) elSub.textContent = '(@ ' + formatRupiah(harga) + ' / ' + satuan + ')';

@@ -354,7 +354,7 @@ function labelDua(ikon, panjang, pendek) {
     return '<i class="bi ' + ikon + '"></i> <span class="pu-t-long">' + panjang + '</span><span class="pu-t-short">' + pendek + '</span>';
 }
 function labelAksiKartu(p) {
-    if (isB2B()) return bolehPesanLangsungB2b(p)
+    if (isB2B()) return bisaPesanLangsungKartu(p)
         ? labelDua('bi-cart-plus', 'Pesan Langsung', 'Pesan')
         : labelDua('bi-file-earmark-text', 'RFQ B2B', 'RFQ');
     if (daftarWarna(p).length) return labelDua('bi-palette', 'Pilih Warna', 'Warna');
@@ -423,7 +423,7 @@ function aksiUtamaKartu(id) {
     const p = AppState.produkIndex[id];
     if (!p) return;
     if (isB2B()) {
-        if (bolehPesanLangsungB2b(p)) bukaDetailProduk(id);   // perlu jumlah & harga bertingkat
+        if (bisaPesanLangsungKartu(p)) bukaDetailProduk(id);   // perlu jumlah & harga bertingkat
         else bukaRfqUntukProdukId(id, 'RFQ');
         return;
     }
