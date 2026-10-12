@@ -159,10 +159,6 @@ function renderHomePage() {
 
       '<section class="page-wrap" id="homeProdukSection">',
       '<div id="b2bBannerWrap"></div>',
-      '<div id="homeSorotWrap" style="display:none;">',
-      '<div class="pu-sorot-judul"><i class="bi bi-star-fill"></i> Produk Pilihan</div>',
-      '<div id="homeProductGridSorot" class="product-grid mb-4"></div>',
-      '</div>',
       '<div id="homeProductGridRasa" class="product-grid mb-4"></div>',
       '<div id="homeProductGridTani" class="product-grid mb-4"></div>',
       '<div id="homeProductGridKriya" class="product-grid mb-4"></div>',
@@ -293,25 +289,19 @@ function loadHomePageDataGabungan() {
     });
 }
 /**
- * Urutan baris produk di Beranda: Produk Pilihan (yang disorot Admin) paling
- * atas, lalu Kuliner -> Pertanian -> Kerajinan. Baris kosong disembunyikan.
- * Produk yang disorot sengaja TIDAK diulang di baris sektornya supaya satu
- * produk tidak muncul dua kali dalam satu layar.
+ * Urutan baris produk di Beranda: Kuliner -> Pertanian -> Kerajinan. Baris
+ * kosong disembunyikan. Saklar "Sorot" SENGAJA tidak berlaku di sini - Beranda
+ * tetap mengikuti aturan sektor supaya tampilannya rapi. Sorot hanya bekerja
+ * di tab Semua Produk.
  */
 function renderProdukBeranda(d) {
-    const sorot = d.Disorot || [];
-    const wrapSorot = document.getElementById('homeSorotWrap');
-    if (wrapSorot) {
-        if (sorot.length) { wrapSorot.style.display = ''; renderProductGrid('homeProductGridSorot', sorot); }
-        else { wrapSorot.style.display = 'none'; }
-    }
     const grup = [['homeProductGridRasa', d.PortoRasa], ['homeProductGridTani', d.PortoTani], ['homeProductGridKriya', d.PortoKriya]];
-    const adaIsi = sorot.length > 0 || grup.some(function(g) { return g[1] && g[1].length; });
+    const adaIsi = grup.some(function(g) { return g[1] && g[1].length; });
     grup.forEach(function(g, i) {
         const el = document.getElementById(g[0]);
         if (!el) return;
         const items = g[1] || [];
-        if (items.length) { el.style.display = ''; renderProductGrid(g[0], items); }
+        if (items.length) { el.style.display = ''; renderProductGrid(g[0], items, true); }
         else if (!adaIsi && i === 0) { el.style.display = ''; el.innerHTML = pesanKosongProduk(); }
         else { el.style.display = 'none'; el.innerHTML = ''; }
     });
@@ -332,7 +322,11 @@ function downloadBrosurPdf() {
 /** Ambil hanya karakter aman untuk ID di atribut HTML (UUID). */
 function idAman(id) { return String(id == null ? '' : id).replace(/[^0-9a-zA-Z_-]/g, ''); }
 
-function renderProductGrid(containerId, items) {
+/**
+ * @param {boolean} [tanpaPenandaSorot] - true untuk Beranda: penanda "Pilihan"
+ *   tidak dicetak di sana, karena saklar Sorot memang tidak berlaku di Beranda.
+ */
+function renderProductGrid(containerId, items, tanpaPenandaSorot) {
     const el = document.getElementById(containerId);
     if (!el)
         return;
@@ -344,7 +338,7 @@ function renderProductGrid(containerId, items) {
     items.forEach(function(p) {
         try {
             AppState.produkIndex[String(p.id)] = p;
-            cardsHtml.push(productCardHtml(p));
+            cardsHtml.push(productCardHtml(p, tanpaPenandaSorot));
         } catch (err) {
             console.error('Gagal render 1 kartu produk:', err, p);
         }
@@ -381,7 +375,7 @@ function labelAksiKartu(p) {
  * Kartu produk. SEMUA tombol hanya membawa ID produk (bukan nama/deskripsi),
  * sehingga teks bebas yang memuat tanda kutip tidak bisa merusak tombolnya.
  */
-function productCardHtml(p) {
+function productCardHtml(p, tanpaPenandaSorot) {
     const b2b = isB2B();
     const id = idAman(p.id);
     const namaProduk = String(p.nama_produk || '');
@@ -413,7 +407,7 @@ function productCardHtml(p) {
       '<div class="product-card-img-wrap">',
       img,
       badgeText ? ('<span class="badge-discount">' + badgeText + '</span>') : '',
-      p.disorot === true ? '<span class="pu-badge-sorot"><i class="bi bi-star-fill"></i> Pilihan</span>' : '',
+      (p.disorot === true && !tanpaPenandaSorot) ? '<span class="pu-badge-sorot"><i class="bi bi-star-fill"></i> Pilihan</span>' : '',
       ratingVal > 0 ? ('<span class="badge-rating"><i class="bi bi-star-fill"></i> ' + ratingVal.toFixed(1) + (p.jumlah_ulasan ? (' (' + p.jumlah_ulasan + ')') : '') + '</span>') : '',
       '</div>',
       '<div class="product-card-body">',

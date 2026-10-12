@@ -819,17 +819,13 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
     box-shadow: 0 1px 4px rgba(0, 0, 0, .18);
     z-index: 2;
 }
-/* Judul baris Produk Pilihan di Beranda */
-.pu-sorot-judul {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--text-primary);
-    margin: 4px 0 10px;
+/* Keterangan kuota di baris saringan Manajemen Produk */
+.pu-sorot-kuota {
+    align-self: center;
+    margin-left: 4px;
+    font-size: 11.5px;
+    color: var(--text-muted);
 }
-.pu-sorot-judul i { color: #f59e0b; }
 
 @media (max-width: 720px) {
     .pu-sorot span { display: none; }

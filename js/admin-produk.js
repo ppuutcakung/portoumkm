@@ -7,12 +7,14 @@ let adminProdukCache = [];
 let umkmListCache = [];
 const ADMIN_PRODUK_PER_HALAMAN = 25;
 let adminProdukFilterKategori = 'Semua';
+let adminProdukFilterSorot = 'Semua';   // Semua | Disorot | Biasa
 let adminProdukHalaman = 1;
 
 function renderAdminProdukPage() {
     const container = document.getElementById('app-container');
-    container.innerHTML = adminPageShell('Manajemen Produk (CRUD)', '\n    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">\n      <div class="search-box" style="width:280px;"><i class="bi bi-search"></i><input id="adminProdukSearch" placeholder="Cari produk..." oninput="filterAdminProduk()"></div>\n      <button class="btn-primary" onclick="openProdukForm()"><i class="bi bi-plus-lg"></i> Tambah Produk</button>\n    </div>\n    <div class="flex flex-wrap gap-2 mb-3" id="adminProdukKategoriChips"></div>\n    <div class="table-wrap">\n      <table class="data-table">\n        <thead><tr><th>Foto</th><th>Nama Produk</th><th>UMKM</th><th>Kategori</th><th>Harga</th><th>Status</th><th>Sorot</th><th></th></tr></thead>\n        <tbody id="adminProdukTbody"><tr><td colspan="8" class="text-center py-4">Memuat...</td></tr></tbody>\n      </table>\n    </div>\n    <div id="adminProdukPagination" class="pagination"></div>\n  ');
+    container.innerHTML = adminPageShell('Manajemen Produk (CRUD)', '\n    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">\n      <div class="search-box" style="width:280px;"><i class="bi bi-search"></i><input id="adminProdukSearch" placeholder="Cari produk..." oninput="filterAdminProduk()"></div>\n      <button class="btn-primary" onclick="openProdukForm()"><i class="bi bi-plus-lg"></i> Tambah Produk</button>\n    </div>\n    <div class="flex flex-wrap gap-2 mb-2" id="adminProdukKategoriChips"></div>\n    <div class="flex flex-wrap gap-2 mb-3" id="adminProdukSorotChips"></div>\n    <div class="table-wrap">\n      <table class="data-table">\n        <thead><tr><th>Foto</th><th>Nama Produk</th><th>UMKM</th><th>Kategori</th><th>Harga</th><th>Status</th><th>Sorot</th><th></th></tr></thead>\n        <tbody id="adminProdukTbody"><tr><td colspan="8" class="text-center py-4">Memuat...</td></tr></tbody>\n      </table>\n    </div>\n    <div id="adminProdukPagination" class="pagination"></div>\n  ');
     adminProdukFilterKategori = 'Semua';
+    adminProdukFilterSorot = 'Semua';
     adminProdukHalaman = 1;
     renderAdminProdukKategoriChips();
     loadAdminProduk();
@@ -29,6 +31,25 @@ function renderAdminProdukKategoriChips() {
     wrap.innerHTML = chipsList.map(function(c) {
         return '<button class="chip chip-solid ' + (adminProdukFilterKategori === c.key ? 'active' : '') + '" onclick="setAdminProdukKategori(\'' + c.key + '\')">' + c.label + '</button>';
     }).join('');
+}
+/** Saringan cepat: lihat produk mana saja yang sedang disorot. */
+function renderAdminProdukSorotChips() {
+    const wrap = document.getElementById('adminProdukSorotChips');
+    if (!wrap) return;
+    const total = adminProdukCache.length;
+    const n = jumlahDisorot();
+    const daftar = [
+        { key: 'Semua', label: 'Semua Produk', n: total },
+        { key: 'Disorot', label: '<i class="bi bi-star-fill"></i> Disorot', n: n },
+        { key: 'Biasa', label: 'Belum Disorot', n: total - n }
+    ];
+    wrap.innerHTML = daftar.map(function(c) {
+        return '<button class="chip ' + (adminProdukFilterSorot === c.key ? 'active' : '') + '" onclick="setAdminProdukSorot(\'' + c.key + '\')">' + c.label + ' (' + c.n + ')</button>';
+    }).join('') + '<span class="pu-sorot-kuota">' + n + ' dari ' + MAKS_DISOROT + ' slot sorot terpakai</span>';
+}
+function setAdminProdukSorot(nilai) {
+    adminProdukFilterSorot = nilai;
+    filterAdminProduk();
 }
 function setAdminProdukKategori(kategori) {
     adminProdukFilterKategori = kategori;
@@ -101,9 +122,14 @@ function filterAdminProduk(resetHalaman) {
     const q = (document.getElementById('adminProdukSearch').value || '').toLowerCase();
     const filtered = adminProdukCache.filter(function(p) {
         const cocokKategori = adminProdukFilterKategori === 'Semua' || p.kategori === adminProdukFilterKategori;
+        const disorot = p.disorot === true;
+        const cocokSorot = adminProdukFilterSorot === 'Semua'
+            || (adminProdukFilterSorot === 'Disorot' && disorot)
+            || (adminProdukFilterSorot === 'Biasa' && !disorot);
         const cocokCari = !q || (p.nama_produk || '').toLowerCase().includes(q) || (p.nama_umkm || '').toLowerCase().includes(q);
-        return cocokKategori && cocokCari;
+        return cocokKategori && cocokSorot && cocokCari;
     });
+    renderAdminProdukSorotChips();
     renderAdminProdukTable(filtered);
 }
 function gotoAdminProdukHalaman(h) {
@@ -115,7 +141,13 @@ function gotoAdminProdukHalaman(h) {
 function renderAdminProdukTable(items) {
     const tbody = document.getElementById('adminProdukTbody');
     if (!items.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4" style="color:var(--text-muted)">Belum ada produk.</td></tr>';
+        // Pesannya menyesuaikan saringan, supaya Admin tidak mengira produknya hilang.
+        const adaSaringan = adminProdukFilterSorot !== 'Semua' || adminProdukFilterKategori !== 'Semua'
+            || ((document.getElementById('adminProdukSearch') || {}).value || '') !== '';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4" style="color:var(--text-muted)">' +
+            (adminProdukCache.length && adaSaringan
+              ? (adminProdukFilterSorot === 'Disorot' ? 'Belum ada produk yang disorot.' : 'Tidak ada produk pada saringan ini.')
+              : 'Belum ada produk.') + '</td></tr>';
         document.getElementById('adminProdukPagination').innerHTML = '';
         return;
     }
