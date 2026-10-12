@@ -11,7 +11,7 @@ let adminProdukHalaman = 1;
 
 function renderAdminProdukPage() {
     const container = document.getElementById('app-container');
-    container.innerHTML = adminPageShell('Manajemen Produk (CRUD)', '\n    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">\n      <div class="search-box" style="width:280px;"><i class="bi bi-search"></i><input id="adminProdukSearch" placeholder="Cari produk..." oninput="filterAdminProduk()"></div>\n      <button class="btn-primary" onclick="openProdukForm()"><i class="bi bi-plus-lg"></i> Tambah Produk</button>\n    </div>\n    <div class="flex flex-wrap gap-2 mb-3" id="adminProdukKategoriChips"></div>\n    <div class="table-wrap">\n      <table class="data-table">\n        <thead><tr><th>Foto</th><th>Nama Produk</th><th>UMKM</th><th>Kategori</th><th>Harga</th><th>Status</th><th></th></tr></thead>\n        <tbody id="adminProdukTbody"><tr><td colspan="7" class="text-center py-4">Memuat...</td></tr></tbody>\n      </table>\n    </div>\n    <div id="adminProdukPagination" class="pagination"></div>\n  ');
+    container.innerHTML = adminPageShell('Manajemen Produk (CRUD)', '\n    <div class="flex items-center justify-between mb-3 flex-wrap gap-2">\n      <div class="search-box" style="width:280px;"><i class="bi bi-search"></i><input id="adminProdukSearch" placeholder="Cari produk..." oninput="filterAdminProduk()"></div>\n      <button class="btn-primary" onclick="openProdukForm()"><i class="bi bi-plus-lg"></i> Tambah Produk</button>\n    </div>\n    <div class="flex flex-wrap gap-2 mb-3" id="adminProdukKategoriChips"></div>\n    <div class="table-wrap">\n      <table class="data-table">\n        <thead><tr><th>Foto</th><th>Nama Produk</th><th>UMKM</th><th>Kategori</th><th>Harga</th><th>Status</th><th>Sorot</th><th></th></tr></thead>\n        <tbody id="adminProdukTbody"><tr><td colspan="8" class="text-center py-4">Memuat...</td></tr></tbody>\n      </table>\n    </div>\n    <div id="adminProdukPagination" class="pagination"></div>\n  ');
     adminProdukFilterKategori = 'Semua';
     adminProdukHalaman = 1;
     renderAdminProdukKategoriChips();
@@ -60,6 +60,42 @@ function loadAdminProduk() {
     });
 }
 /** Gabungan filter kategori + pencarian teks, lalu render halaman saat ini (reset ke halaman 1 kalau filter berubah). */
+// -------------------- SOROT: TAMPILKAN PALING DEPAN --------------------
+const MAKS_DISOROT = 20;
+/** Saklar sorot pada baris tabel produk. Tombol hanya membawa ID produk. */
+function saklarSorot(p) {
+    const aktif = p.disorot === true;
+    return '<button type="button" class="pu-sorot' + (aktif ? ' pu-sorot-aktif' : '') + '"' +
+           ' onclick="ubahSorotProduk(\'' + idAman(p.id) + '\')"' +
+           ' title="' + (aktif ? 'Sedang disorot - klik untuk mematikan' : 'Tampilkan produk ini paling depan') + '">' +
+           '<i class="bi ' + (aktif ? 'bi-star-fill' : 'bi-star') + '"></i>' +
+           '<span>' + (aktif ? 'Disorot' : 'Sorot') + '</span></button>';
+}
+function jumlahDisorot() {
+    return adminProdukCache.filter(function(x) { return x.disorot === true; }).length;
+}
+function ubahSorotProduk(id) {
+    const p = adminProdukCache.find(function(x) { return x.id === id; });
+    if (!p) { showToast('Gagal', 'Produk tidak ditemukan. Muat ulang halaman lalu coba lagi.', 'danger'); return; }
+    const baru = !(p.disorot === true);
+    // Batas 20 juga dijaga database; pemeriksaan di sini hanya agar Admin
+    // langsung tahu tanpa harus menunggu penolakan dari server.
+    if (baru && jumlahDisorot() >= MAKS_DISOROT) {
+        showToast('Batas tercapai', 'Sudah ada ' + MAKS_DISOROT + ' produk yang disorot. Matikan salah satunya dulu.', 'warning');
+        return;
+    }
+    dbUpdate('produk', id, { disorot: baru }).then(function(res) {
+        if (!res.success) { showToast('Gagal', res.message, 'danger'); return; }
+        p.disorot = baru;
+        p.disorot_pada = baru ? new Date().toISOString() : null;
+        AppState.cache = {};   // katalog & beranda harus memuat ulang urutannya
+        showToast(baru ? 'Disorot' : 'Sorot dimatikan',
+            baru ? (p.nama_produk + ' kini tampil paling depan. (' + jumlahDisorot() + '/' + MAKS_DISOROT + ')')
+                 : (p.nama_produk + ' kembali ke urutan biasa.'), 'success');
+        filterAdminProduk();   // gambar ulang tabel tanpa mengubah saringan & halaman
+    });
+}
+
 function filterAdminProduk(resetHalaman) {
     if (resetHalaman !== false) adminProdukHalaman = 1;
     const q = (document.getElementById('adminProdukSearch').value || '').toLowerCase();
@@ -79,7 +115,7 @@ function gotoAdminProdukHalaman(h) {
 function renderAdminProdukTable(items) {
     const tbody = document.getElementById('adminProdukTbody');
     if (!items.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4" style="color:var(--text-muted)">Belum ada produk.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4" style="color:var(--text-muted)">Belum ada produk.</td></tr>';
         document.getElementById('adminProdukPagination').innerHTML = '';
         return;
     }
@@ -105,6 +141,7 @@ function renderAdminProdukTable(items) {
           '<td>' + escapeHtml(p.kategori) + ' <span style="color:var(--text-muted)">/ ' + escapeHtml(p.sub_kategori) + '</span></td>',
           '<td>' + (harga ? formatRupiah(harga) : '<span style="color:var(--text-muted)">-</span>') + (p.harga_promo ? ('<br><span class="price-old">' + formatRupiah(p.harga_normal) + '</span>') : '') + '</td>',
           '<td><span class="status-pill ' + (p.status === 'Aktif' ? 'aktif' : 'nonaktif') + '">' + escapeHtml(p.status) + '</span><div style="margin-top:4px;">' + modeBadge + '</div></td>',
+          '<td>' + saklarSorot(p) + '</td>',
           '<td class="whitespace-nowrap">',
           '<button class="btn-icon-sm" onclick="editProdukById(\'' + id + '\')" title="Edit"><i class="bi bi-pencil"></i></button> ',
           '<button class="btn-icon-sm" onclick="hapusProdukById(\'' + id + '\')" title="Hapus"><i class="bi bi-trash text-red-500"></i></button>',

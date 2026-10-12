@@ -159,6 +159,10 @@ function renderHomePage() {
 
       '<section class="page-wrap" id="homeProdukSection">',
       '<div id="b2bBannerWrap"></div>',
+      '<div id="homeSorotWrap" style="display:none;">',
+      '<div class="pu-sorot-judul"><i class="bi bi-star-fill"></i> Produk Pilihan</div>',
+      '<div id="homeProductGridSorot" class="product-grid mb-4"></div>',
+      '</div>',
       '<div id="homeProductGridRasa" class="product-grid mb-4"></div>',
       '<div id="homeProductGridTani" class="product-grid mb-4"></div>',
       '<div id="homeProductGridKriya" class="product-grid mb-4"></div>',
@@ -288,10 +292,21 @@ function loadHomePageDataGabungan() {
         if (!produkRes.success) showToast('Error', 'Gagal memuat produk: ' + produkRes.message, 'danger');
     });
 }
-/** Urutan baris produk di Beranda: Kuliner -> Pertanian -> Kerajinan. Baris kosong disembunyikan. */
+/**
+ * Urutan baris produk di Beranda: Produk Pilihan (yang disorot Admin) paling
+ * atas, lalu Kuliner -> Pertanian -> Kerajinan. Baris kosong disembunyikan.
+ * Produk yang disorot sengaja TIDAK diulang di baris sektornya supaya satu
+ * produk tidak muncul dua kali dalam satu layar.
+ */
 function renderProdukBeranda(d) {
+    const sorot = d.Disorot || [];
+    const wrapSorot = document.getElementById('homeSorotWrap');
+    if (wrapSorot) {
+        if (sorot.length) { wrapSorot.style.display = ''; renderProductGrid('homeProductGridSorot', sorot); }
+        else { wrapSorot.style.display = 'none'; }
+    }
     const grup = [['homeProductGridRasa', d.PortoRasa], ['homeProductGridTani', d.PortoTani], ['homeProductGridKriya', d.PortoKriya]];
-    const adaIsi = grup.some(function(g) { return g[1] && g[1].length; });
+    const adaIsi = sorot.length > 0 || grup.some(function(g) { return g[1] && g[1].length; });
     grup.forEach(function(g, i) {
         const el = document.getElementById(g[0]);
         if (!el) return;
@@ -398,6 +413,7 @@ function productCardHtml(p) {
       '<div class="product-card-img-wrap">',
       img,
       badgeText ? ('<span class="badge-discount">' + badgeText + '</span>') : '',
+      p.disorot === true ? '<span class="pu-badge-sorot"><i class="bi bi-star-fill"></i> Pilihan</span>' : '',
       ratingVal > 0 ? ('<span class="badge-rating"><i class="bi bi-star-fill"></i> ' + ratingVal.toFixed(1) + (p.jumlah_ulasan ? (' (' + p.jumlah_ulasan + ')') : '') + '</span>') : '',
       '</div>',
       '<div class="product-card-body">',
