@@ -832,3 +832,43 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
     .pu-sorot { padding: 5px 9px; }
     .pu-badge-sorot { font-size: 10px; padding: 2px 7px; }
 }
+
+/* ============================================================
+   PENANDA "BERAPA KALI DIPESAN" DI KARTU PRODUK
+   Angka ini dibaca pengunjung sebagai bukti sosial, jadi tampilannya
+   tenang: baris kecil di bawah harga, bukan stiker besar yang bersaing
+   dengan badge diskon maupun badge Pilihan.
+   ============================================================ */
+.pu-laris {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 2px 9px;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pu-laris > i { font-size: 11px; color: #64748b; }
+.pu-laris > b { font-weight: 800; color: #1e293b; }
+/* 10 pesanan ke atas: produk yang benar-benar laris, diberi warna hangat. */
+.pu-laris-kuat {
+    color: #9a3412;
+    background: #fff7ed;
+    border-color: #fed7aa;
+}
+.pu-laris-kuat > i { color: #ea580c; }
+.pu-laris-kuat > b { color: #9a3412; }
+
+@media (max-width: 720px) {
+    .pu-laris { font-size: 10.5px; padding: 2px 8px; margin-top: 5px; }
+    .pu-laris > i { font-size: 10px; }
+}

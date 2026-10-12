@@ -375,6 +375,21 @@ function labelAksiKartu(p) {
  * Kartu produk. SEMUA tombol hanya membawa ID produk (bukan nama/deskripsi),
  * sehingga teks bebas yang memuat tanda kutip tidak bisa merusak tombolnya.
  */
+/**
+ * Keterangan berapa kali produk ini pernah dipesan. Angkanya dihitung dari
+ * pesanan yang SUDAH DIKONFIRMASI Admin saja, supaya pesanan iseng yang belum
+ * diperiksa tidak ikut menggelembungkan angkanya.
+ * Produk yang belum pernah dipesan tidak diberi keterangan apa pun - menulis
+ * "0 kali" justru membuatnya terlihat kurang meyakinkan tanpa alasan.
+ */
+function penandaLaris(p) {
+    const n = Number(p && p.order_count) || 0;
+    if (n < 1) return '';
+    const kuat = n >= 10;
+    return '<div class="pu-laris' + (kuat ? ' pu-laris-kuat' : '') + '">' +
+           '<i class="bi ' + (kuat ? 'bi-fire' : 'bi-bag-check-fill') + '"></i> ' +
+           '<b>' + n + '&times;</b> dipesan</div>';
+}
 function productCardHtml(p, tanpaPenandaSorot) {
     const b2b = isB2B();
     const id = idAman(p.id);
@@ -416,6 +431,7 @@ function productCardHtml(p, tanpaPenandaSorot) {
       '<div class="product-title">' + escapeHtml(namaProduk) + '</div>',
       (!b2b && deskripsi) ? ('<div class="product-desc">' + escapeHtml(deskripsi) + '</div>') : '',
       hargaHtml,
+      penandaLaris(p),
       cert ? ('<div class="pu-cert-wrap pu-cert-card">' + cert + '</div>') : '',
       '</div>',
       '<div class="product-card-footer pu-card-actions" onclick="event.stopPropagation()">',
@@ -490,6 +506,13 @@ function previewImage(url, title) {
 function renderKatalogPage() {
     const f = AppState.katalogFilter;
     const b2b = isB2B();
+    // Saringan yang chip-nya tidak ada di mode ini dikembalikan ke "Semua".
+    // Tanpa ini, customer yang sedang menyaring Pertanian lalu pindah ke Grosir
+    // akan melihat daftar kosong tanpa chip untuk membatalkannya.
+    if (b2b && (f.kategori === 'PortoTani' || f.kategori === 'PromoB2B')) {
+        f.kategori = 'Semua';
+        f.subKategori = '';
+    }
     const container = document.getElementById('app-container');
     container.innerHTML = [
       '<div class="page-wrap">',
@@ -515,19 +538,20 @@ function renderKatalogPage() {
 
     // Urutan tombol sektor dibuat SAMA dengan urutan produk di dalam grid
     // (lihat SQL get_produk_list), supaya tombol dan isinya tidak bertolak belakang:
-    //   Ritel  : Kerajinan -> Kuliner  -> Pertanian
-    //   Grosir : Kuliner   -> Pertanian -> Kerajinan
-    // "Paket Promo" & "Sering Dipesan" hanya di mode ritel.
+    //   Ritel  : Kerajinan -> Kuliner -> Pertanian, lalu Paket Promo & Sering Dipesan
+    //   Grosir : Kuliner   -> Kerajinan,            lalu Sering Dipesan
+    // Pertanian TIDAK ditampilkan di mode Grosir karena sektor itu memang tidak
+    // menjual grosir. Kalau suatu saat ada produk Pertanian yang dibuka untuk
+    // grosir, produknya tetap muncul di "Semua Produk".
     const sRasa = { key: 'PortoRasa', label: 'PortoRasa (Kuliner)', ikon: 'bi-egg-fried', warna: 'rasa' };
     const sTani = { key: 'PortoTani', label: 'PortoTani (Pertanian)', ikon: 'bi-flower1', warna: 'tani' };
     const sKriya = { key: 'PortoKriya', label: 'PortoKriya (Kerajinan)', ikon: 'bi-palette-fill', warna: 'kriya' };
+    const sSering = { key: 'SeringDipesan', label: 'Produk Sering Dipesan', ikon: 'bi-fire', warna: 'sering' };
     const sektorList = [{ key: 'Semua', label: 'Semua Produk', ikon: 'bi-grid-fill', warna: 'netral' }].concat(
-        b2b ? [sRasa, sTani, sKriya] : [sKriya, sRasa, sTani]
+        b2b ? [sRasa, sKriya] : [sKriya, sRasa, sTani]
     );
-    if (!b2b) {
-        sektorList.push({ key: 'PromoB2B', label: 'Paket Promo', ikon: 'bi-tags-fill', warna: 'promo' });
-        sektorList.push({ key: 'SeringDipesan', label: 'Produk Sering Dipesan', ikon: 'bi-fire', warna: 'sering' });
-    }
+    if (!b2b) sektorList.push({ key: 'PromoB2B', label: 'Paket Promo', ikon: 'bi-tags-fill', warna: 'promo' });
+    sektorList.push(sSering);
     // Ikon ada di kiri tulisan; tiap sektor punya warna sendiri (lihat .pu-chip-* di b2b-fitur.css)
     document.getElementById('katalogSektorChips').innerHTML = sektorList.map(function(s) {
         return '<button class="chip chip-solid pu-chip pu-chip-' + s.warna + ' ' + (f.kategori === s.key ? 'active' : '') +
