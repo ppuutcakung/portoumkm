@@ -17,6 +17,7 @@ function renderAdminProdukPage() {
     adminProdukFilterSorot = 'Semua';
     adminProdukHalaman = 1;
     renderAdminProdukKategoriChips();
+    renderAdminProdukSorotChips();   // digambar sejak awal, tidak menunggu data termuat
     loadAdminProduk();
 }
 function renderAdminProdukKategoriChips() {
@@ -68,7 +69,10 @@ function loadAdminProduk() {
     if (cached) {
         umkmListCache = cached.umkm_list || [];
         adminProdukCache = cached.produk_list || [];
-        renderAdminProdukTable(adminProdukCache);
+        // Lewat filterAdminProduk(), BUKAN langsung renderAdminProdukTable():
+        // baris saringan (termasuk chip Sorot) digambar di dalamnya. Memanggil
+        // tabelnya langsung membuat chip itu hilang setiap kembali ke tab ini.
+        filterAdminProduk();
         return;
     }
     dbRpc('get_admin_produk_page_data').then(function(res) {
