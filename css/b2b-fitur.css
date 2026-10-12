@@ -666,3 +666,113 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
     .pu-deal-ringkas span { width: 92px; }
     .pu-btn-deal { width: 100%; }
 }
+
+/* ============================================================
+   PROMOSI WHATSAPP
+   ============================================================ */
+.pu-promo-langkah {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    align-items: start;
+}
+.pu-promo-kol { min-width: 0; }
+.pu-btn-kecil { height: 30px; padding: 0 10px; font-size: 11.5px; }
+.pu-promo-daftar {
+    max-height: 460px;
+    overflow-y: auto;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    background: #fff;
+}
+.pu-promo-baris {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 9px 11px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.pu-promo-baris:last-child { border-bottom: none; }
+.pu-promo-kecuali { background: #f8fafc; opacity: .72; }
+.pu-promo-cek {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    font-size: 13px;
+}
+.pu-promo-cek input { margin-top: 3px; flex: none; }
+.pu-promo-cek b { color: var(--text-primary); }
+.pu-promo-pt { color: var(--text-muted); font-size: 12px; }
+.pu-promo-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    line-height: 1.45;
+}
+.pu-promo-aksi {
+    flex: none;
+    background: none;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.pu-promo-aksi:hover { background: #f1f5f9; }
+.pu-promo-aksi-merah { color: #b91c1c; border-color: #fecaca; }
+/* Pratinjau menyerupai gelembung pesan WhatsApp */
+.pu-promo-pratinjau { margin-top: 4px; }
+.pu-promo-gelembung {
+    background: #dcf8c6;
+    border-radius: 10px 10px 10px 2px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #111827;
+    white-space: normal;
+    word-break: break-word;
+}
+.pu-promo-hitung {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+.pu-promo-sampel { margin-top: 2px; }
+/* Antrean pengiriman satu per satu */
+.pu-antre-bar {
+    height: 7px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+.pu-antre-isi {
+    height: 100%;
+    background: #16a34a;
+    border-radius: 999px;
+    transition: width .25s ease;
+}
+.pu-antre-kartu {
+    background: #f8fafc;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+}
+.pu-antre-nama { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+.pu-antre-hp { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+@media (max-width: 860px) {
+    .pu-promo-langkah { grid-template-columns: 1fr; }
+    .pu-promo-daftar { max-height: 340px; }
+}
+@media (max-width: 720px) {
+    .pu-promo-baris { flex-wrap: wrap; }
+    .pu-promo-aksi { width: 100%; text-align: center; padding: 5px 9px; }
+}

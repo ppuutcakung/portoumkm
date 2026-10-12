@@ -129,6 +129,7 @@ function navigateTo(pageName, options) {
         adminKonfirmasi: renderAdminKonfirmasiPage,
         adminPesanan: renderAdminPesananPage,
         adminRfq: renderAdminRfqPage,
+        adminPromosi: renderAdminPromosiPage,
         adminSettings: renderAdminSettingsPage
     };
     if (options.katalogFilter)
