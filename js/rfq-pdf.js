@@ -45,6 +45,20 @@ function susunDokumenRfq(r) {
         if (hargaDiminta !== null) produk.push(['Perkiraan Total', rupiahPdf(hargaDiminta * jumlah) + ' (pada harga yang diminta)']);
     }
     if (r.harga_estimasi_satuan) produk.push(['Acuan Harga Skema Grosir', rupiahPdf(r.harga_estimasi_satuan) + (satuan ? ' / ' + satuan : '')]);
+    // Kalau sudah disepakati, angka KESEPAKATAN yang berlaku - bukan lagi angka
+    // yang diajukan. Diberi BAGIAN TERSENDIRI, bukan disisipkan ke daftar di
+    // atas, supaya UMKM tidak salah membaca angka mana yang harus dikerjakan.
+    let kesepakatan = null;
+    if (r.status_kesepakatan === 'Deal') {
+        const jd = Number(r.jumlah_deal) || 0, hd = Number(r.harga_deal) || 0;
+        kesepakatan = [
+            ['Jumlah Disepakati', jd + (satuan ? ' ' + satuan : '')],
+            ['Harga Disepakati', rupiahPdf(hd) + (satuan ? ' / ' + satuan : '')],
+            ['Total Nilai Pesanan', rupiahPdf(jd * hd)]
+        ];
+        if (r.catatan_deal) kesepakatan.push(['Catatan Kesepakatan', r.catatan_deal]);
+        if (r.nomor_pesanan) kesepakatan.push(['No. Pesanan', r.nomor_pesanan]);
+    }
     const nomorFile = nomor.replace(/[^A-Za-z0-9_-]/g, '');
     return {
         judul: sampel ? 'PERMINTAAN PAKET SAMPEL' : (kustom ? 'REQUEST FOR QUOTATION (RFQ) KUSTOM' : 'REQUEST FOR QUOTATION (RFQ)'),
@@ -61,6 +75,7 @@ function susunDokumenRfq(r) {
             ['Alamat Penerima', r.alamat_penerima || '-']
         ],
         produk: produk,
+        kesepakatan: kesepakatan,
         ketentuan: [
             [sampel ? 'Skema Sampel' : 'Opsi Pembayaran', teksPembayaran(r.opsi_pembayaran, r.dp_persen) || '-'],
             ['Batas Waktu Pengiriman', r.batas_waktu ? tanggalDateIndo(r.batas_waktu) : '-']
@@ -175,10 +190,16 @@ function gambarDokumenRfq(pdf, doc, foto, opsi) {
     // ================= ISI =================
     kepalaPertama();
 
-    bagian('A. DATA PEMOHON');
+    // Huruf bagian dihitung berjalan, karena bagian KESEPAKATAN hanya muncul
+    // pada pengajuan yang sudah disepakati.
+    let huruf = 0;
+    const HURUF = ['A', 'B', 'C', 'D', 'E', 'F'];
+    function bagianUrut(judul) { bagian(HURUF[huruf++] + '. ' + judul); }
+
+    bagianUrut('DATA PEMOHON');
     tabelBerhalaman(doc.pemohon, 48);
 
-    bagian('B. ' + (doc.sampel ? 'SAMPEL YANG DIMINTA' : 'PRODUK YANG DIMINTA'));
+    bagianUrut(doc.sampel ? 'SAMPEL YANG DIMINTA' : 'PRODUK YANG DIMINTA');
     const FOTO = 50, GAP = 5, XT = M + FOTO + GAP, WT = CW - FOTO - GAP;
     const tinggiBlok = Math.max(FOTO + 2, tinggiTabel(doc.produk, WT, 44));
     pastikanRuang(tinggiBlok + 4);
@@ -196,10 +217,19 @@ function gambarDokumenRfq(pdf, doc, foto, opsi) {
     const yAkhirTabel = gambarTabel(doc.produk, XT, WT, 44);
     y = Math.max(y + FOTO, yAkhirTabel) + 6;
 
-    bagian('C. KETENTUAN');
+    if (doc.kesepakatan && doc.kesepakatan.length) {
+        bagianUrut('KESEPAKATAN (ANGKA YANG BERLAKU)');
+        tabelBerhalaman(doc.kesepakatan, 48);
+        pastikanRuang(LH + 3);
+        pdf.font('normal', 8); pdf.warnaTeks(REDUP);
+        pdf.teks('Angka pada bagian ini menggantikan jumlah dan harga yang diajukan di atas.', M + 1, y + 3.4);
+        y += LH + 5;
+    }
+
+    bagianUrut('KETENTUAN');
     tabelBerhalaman(doc.ketentuan, 48);
 
-    bagian('D. SPESIFIKASI / KEBUTUHAN KHUSUS');
+    bagianUrut('SPESIFIKASI / KEBUTUHAN KHUSUS');
     pdf.font('normal', 9.5); pdf.warnaTeks(TEKS);
     bungkusTeks(pdf, bersihkanTeksPdf(doc.spesifikasi), CW - 2).forEach(function(l) {
         pastikanRuang(LH + 2);
