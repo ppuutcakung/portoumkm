@@ -872,3 +872,45 @@ body.pu-recolor:not(.admin-mode) .chip.pu-chip-netral.active { background: #ffff
     .pu-laris { font-size: 10.5px; padding: 2px 8px; margin-top: 5px; }
     .pu-laris > i { font-size: 10px; }
 }
+
+/* ============================================================
+   STATUS BAYAR DI MONITORING PESANAN
+   Dropdown yang berstatus "Sudah Bayar" diberi warna hijau supaya Admin
+   bisa memindai satu kolom sekali lihat, tanpa membaca tulisannya satu
+   per satu. "Belum Bayar" sengaja dibiarkan netral - kalau keduanya
+   berwarna, tidak ada lagi yang menonjol.
+
+   Palet hijaunya sengaja sama dengan .pu-cert di atas, supaya seluruh
+   aplikasi memakai satu hijau yang sama.
+
+   !important dipakai di sini karena gaya dasar .form-select berada di
+   style.css, dan aturan ini harus menang atas warna bawaannya.
+   ============================================================ */
+select.form-select.pu-bayar-lunas {
+    color: #166534 !important;
+    background-color: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+    font-weight: 700;
+}
+select.form-select.pu-bayar-lunas:focus {
+    border-color: #16a34a !important;
+}
+/* Saat terkunci, dropdown dibuat "disabled". Browser biasanya meredupkan dan
+   mengabukan tulisannya - itu akan membatalkan warna hijaunya dan membuatnya
+   sulit dibaca. Tiga baris di bawah melawan peredupan itu.
+   -webkit-text-fill-color perlu disebut terpisah karena di Safari/iOS warna
+   tulisan elemen disabled diatur oleh properti itu, bukan oleh color. */
+select.form-select.pu-bayar-lunas:disabled {
+    color: #166534 !important;
+    -webkit-text-fill-color: #166534 !important;
+    opacity: 1 !important;
+    cursor: not-allowed;
+}
+/* Ikon gembok kecil yang menggantikan tombol pensil pada baris terkunci.
+   Sengaja abu-abu, bukan hijau: ia keterangan, bukan tombol. */
+.pu-kunci-ikon {
+    color: #94a3b8;
+    font-size: 12px;
+    margin-left: 2px;
+    cursor: help;
+}

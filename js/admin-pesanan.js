@@ -123,10 +123,15 @@ function renderPesananTabel() {
           '<td style="max-width:200px; white-space:normal;">' + pemesan + '</td>',
           '<td class="whitespace-nowrap text-xs">' + tanggalKirimSederhana(p.tanggal_kirim) + '<div style="color:var(--text-muted)">' + escapeHtml(ringkasJamItem(p.items, p.jam_maksimal)) + '</div></td>',
           '<td style="max-width:220px; white-space:normal;" class="text-xs">' + (ringkasItem || '-') + '</td>',
+          // Pesanan yang sudah bayar: tombol pensil diganti ikon gembok, supaya
+          // Admin tahu BUKAN tombolnya yang hilang, melainkan sedang terkunci.
           '<td class="whitespace-nowrap font-semibold">' + formatRupiah(p.total_estimasi) +
-            ' <button class="btn-icon-sm" onclick="editTotalPesanan(\'' + id + '\')" title="Edit total"><i class="bi bi-pencil"></i></button></td>',
-          '<td><select class="form-select" style="height:32px; font-size:12px; width:auto;" onchange="ubahStatusBayar(\'' + id + '\', this.value)">' +
-            STATUS_BAYAR.map(function(st) { return '<option' + (p.status_bayar === st ? ' selected' : '') + '>' + st + '</option>'; }).join('') + '</select></td>',
+            (sudahBayar(p)
+              ? ' <i class="bi bi-lock-fill pu-kunci-ikon" title="Terkunci karena sudah bayar. Buka kuncinya lewat tombol gembok di kolom Status Bayar."></i>'
+              : ' <button class="btn-icon-sm" onclick="editTotalPesanan(\'' + id + '\')" title="Edit total"><i class="bi bi-pencil"></i></button>') + '</td>',
+          '<td class="whitespace-nowrap"><select class="form-select' + (sudahBayar(p) ? ' pu-bayar-lunas' : '') + '"' + (sudahBayar(p) ? ' disabled' : '') + ' style="height:32px; font-size:12px; width:auto;" onchange="ubahStatusBayar(\'' + id + '\', this.value)">' +
+            STATUS_BAYAR.map(function(st) { return '<option' + (p.status_bayar === st ? ' selected' : '') + '>' + st + '</option>'; }).join('') + '</select>' +
+            (sudahBayar(p) ? ' <button class="btn-icon-sm" onclick="bukaKunciBayar(\'' + id + '\')" title="Buka kunci supaya status dan total bisa diubah lagi"><i class="bi bi-unlock"></i></button>' : '') + '</td>',
           '<td class="whitespace-nowrap">',
           '<button class="btn-icon-sm" onclick="unduhInvoiceById(\'' + id + '\')" title="Unduh PDF Detail Pesanan"><i class="bi bi-file-earmark-pdf" style="color:#dc2626;"></i></button> ',
           '<button class="btn-icon-sm" onclick="lihatPesananAdmin(\'' + id + '\')" title="Lihat detail"><i class="bi bi-eye"></i></button> ',
@@ -186,8 +191,38 @@ function ringkasJamItem(items, jamUmum) {
     return 'jam berbeda per produk';
 }
 /** Ubah status bayar lewat dropdown di tabel. */
+/**
+ * Menandai SUDAH BAYAR sekaligus mengunci status dan total pesanan, jadi
+ * selalu ditanya dulu. Kalau Admin membatalkan, tabel digambar ulang supaya
+ * dropdown-nya kembali ke nilai semula - tanpa itu, layar akan menampilkan
+ * "Sudah Bayar" padahal di database masih "Belum Bayar".
+ */
 function ubahStatusBayar(id, status) {
     if (STATUS_BAYAR.indexOf(status) === -1) return;
+    if (status === 'Sudah Bayar') {
+        const p = cariPesananAdmin(id);
+        const tanya = 'Tandai pesanan ' + ((p && p.nomor) || '') + ' sebagai SUDAH BAYAR?\n\n' +
+                      'Setelah ini status dan total pesanannya ikut terkunci.\n' +
+                      'Masih bisa dibuka lagi lewat tombol gembok di kolom Status Bayar.';
+        if (!window.confirm(tanya)) { renderPesananTabel(); return; }
+    }
+    simpanStatusBayar(id, status);
+}
+/**
+ * Membuka kunci: statusnya dikembalikan ke Belum Bayar sehingga total bisa
+ * diedit lagi. Ada supaya satu kali salah klik tidak membuat sebuah pesanan
+ * tertinggal salah selamanya.
+ */
+function bukaKunciBayar(id) {
+    const p = cariPesananAdmin(id);
+    if (!p) { showToast('Gagal', 'Data pesanan tidak ditemukan. Muat ulang halaman lalu coba lagi.', 'danger'); return; }
+    if (!sudahBayar(p)) return;
+    const tanya = 'Buka kunci pesanan ' + (p.nomor || '') + '?\n\n' +
+                  'Statusnya kembali menjadi BELUM BAYAR dan totalnya bisa diedit lagi.';
+    if (!window.confirm(tanya)) return;
+    simpanStatusBayar(id, 'Belum Bayar');
+}
+function simpanStatusBayar(id, status) {
     dbUpdate('pesanan', id, { status_bayar: status }).then(function(res) {
         if (!res.success) { showToast('Gagal', res.message, 'danger'); AppState.cache = {}; loadAdminPesanan(); return; }
         const p = cariPesananAdmin(id);
@@ -202,6 +237,13 @@ let pesananEditId = null;   // ID pesanan yang sedang diedit totalnya
 function editTotalPesanan(id) {
     const p = cariPesananAdmin(id);
     if (!p) { showToast('Gagal', 'Data pesanan tidak ditemukan. Muat ulang halaman lalu coba lagi.', 'danger'); return; }
+    // Penjaga kedua. Tombol pensilnya memang sudah disembunyikan saat terkunci,
+    // tapi pemeriksaan di sini membuat total tetap aman walau fungsinya
+    // terpanggil dari jalur lain (mis. tabel yang belum sempat digambar ulang).
+    if (sudahBayar(p)) {
+        showToast('Terkunci', 'Pesanan ini sudah bayar, jadi totalnya tidak bisa diubah. Buka kuncinya dulu lewat tombol gembok di kolom Status Bayar.', 'danger');
+        return;
+    }
     const jumlahItem = itemsPesanan(p).reduce(function(a, i) { return a + (Number(i.harga_satuan) || 0) * (Number(i.qty) || 0); }, 0);
     pesananEditId = id;
     document.getElementById('previewModalTitle').textContent = 'Edit Total Pesanan';
