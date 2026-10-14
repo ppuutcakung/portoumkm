@@ -8,6 +8,21 @@
 let adminRfqCache = [];
 let adminRfqFilter = 'Semua';   // status
 let adminRfqJenis = 'Semua';    // RFQ | Sampel | Kustom
+let adminRfqTahun = 'Semua';    // Semua | '2026' | '2027' | ...
+/** Tahun pengajuan diambil dari tanggal masuknya. '' kalau tanggalnya tidak sah. */
+function tahunRfq(r) {
+    // Dijaga dua lapis: new Date(null) menghasilkan tahun 1970, BUKAN tanggal
+    // tidak sah - tanpa pemeriksaan pertama ini akan muncul chip "1970" palsu.
+    if (!r || !r.created_at) return '';
+    const d = new Date(r.created_at);
+    return isNaN(d) ? '' : String(d.getFullYear());
+}
+/** Daftar tahun yang benar-benar ada di data, terbaru lebih dulu. */
+function daftarTahunRfq() {
+    const set = {};
+    adminRfqCache.forEach(function(r) { const t = tahunRfq(r); if (t) set[t] = true; });
+    return Object.keys(set).sort().reverse();
+}
 const STATUS_RFQ = ['Baru', 'Diproses', 'Selesai', 'Batal'];
 const JENIS_RFQ = ['RFQ', 'Sampel', 'Kustom'];
 
@@ -15,6 +30,7 @@ function renderAdminRfqPage() {
     const container = document.getElementById('app-container');
     container.innerHTML = adminPageShell('B2B: RFQ &amp; Permintaan Sampel', [
       '<p class="text-sm mb-3" style="color:var(--text-muted)">Pengajuan yang <b>sudah dikonfirmasi</b> Admin. Pengajuan baru menunggu di menu Konfirmasi Pesanan. Klik ikon PDF untuk mengunduh dokumen terstandar lengkap dengan foto produk.<br>Setelah UMKM dan customer sepakat soal jumlah dan harga, tekan <b>Konfirmasi Kesepakatan</b> &mdash; pengajuan berubah menjadi pesanan di <b>Monitoring Pesanan</b> dan terkunci di sini.</p>',
+      '<div class="pu-tahun-baris"><span class="pu-tahun-label">Tahun:</span><span class="flex flex-wrap gap-2" id="rfqTahunChips"></span></div>',
       '<div class="flex flex-wrap gap-2 mb-2" id="rfqJenisChips"></div>',
       '<div class="flex flex-wrap gap-2 mb-3" id="rfqFilterChips"></div>',
       '<div class="table-wrap">',
@@ -26,6 +42,7 @@ function renderAdminRfqPage() {
     ].join(''));
     adminRfqFilter = 'Semua';
     adminRfqJenis = 'Semua';
+    adminRfqTahun = 'Semua';
     loadAdminRfq();
 }
 function loadAdminRfq() {
@@ -40,6 +57,7 @@ function loadAdminRfq() {
 }
 function setFilterRfq(status) { adminRfqFilter = status; renderRfqTabel(); }
 function setJenisRfq(jenis) { adminRfqJenis = jenis; renderRfqTabel(); }
+function setTahunRfq(t) { adminRfqTahun = t; renderRfqTabel(); }
 
 function tanggalIndo(iso) {
     if (!iso) return '-';
@@ -59,11 +77,26 @@ function renderRfqTabel() {
     const chips = document.getElementById('rfqFilterChips');
     const tbody = document.getElementById('rfqTbody');
     if (!chips || !tbody || !jenisChips) return;
+
+    // Di tab ini tidak ada ringkasan statistik, jadi saringan tahun menyaring
+    // TABELNYA. Dipasang paling awal supaya hitungan pada chip Jenis dan
+    // Status ikut mengikuti tahun yang sedang dipilih.
+    const tahunChips = document.getElementById('rfqTahunChips');
+    if (tahunChips) {
+        tahunChips.innerHTML = ['Semua'].concat(daftarTahunRfq()).map(function(t) {
+            const jml = t === 'Semua' ? adminRfqCache.length : adminRfqCache.filter(function(r) { return tahunRfq(r) === t; }).length;
+            return '<button class="chip chip-solid ' + (adminRfqTahun === t ? 'active' : '') +
+                   '" onclick="setTahunRfq(\'' + t + '\')">' + (t === 'Semua' ? 'Semua Tahun' : t) + ' (' + jml + ')</button>';
+        }).join('');
+    }
+    const sesuaiTahun = adminRfqTahun === 'Semua' ? adminRfqCache
+        : adminRfqCache.filter(function(r) { return tahunRfq(r) === adminRfqTahun; });
+
     jenisChips.innerHTML = ['Semua'].concat(JENIS_RFQ).map(function(j) {
-        const jml = j === 'Semua' ? adminRfqCache.length : adminRfqCache.filter(function(r) { return r.jenis === j; }).length;
+        const jml = j === 'Semua' ? sesuaiTahun.length : sesuaiTahun.filter(function(r) { return r.jenis === j; }).length;
         return '<button class="chip ' + (adminRfqJenis === j ? 'active' : '') + '" onclick="setJenisRfq(\'' + j + '\')">' + (j === 'Semua' ? 'Semua Jenis' : j) + ' (' + jml + ')</button>';
     }).join('');
-    const sesuaiJenis = adminRfqJenis === 'Semua' ? adminRfqCache : adminRfqCache.filter(function(r) { return r.jenis === adminRfqJenis; });
+    const sesuaiJenis = adminRfqJenis === 'Semua' ? sesuaiTahun : sesuaiTahun.filter(function(r) { return r.jenis === adminRfqJenis; });
     chips.innerHTML = ['Semua'].concat(STATUS_RFQ).map(function(st) {
         const jml = st === 'Semua' ? sesuaiJenis.length : sesuaiJenis.filter(function(r) { return r.status === st; }).length;
         return '<button class="chip chip-solid ' + (adminRfqFilter === st ? 'active' : '') + '" onclick="setFilterRfq(\'' + st + '\')">' + (st === 'Semua' ? 'Semua Status' : st) + ' (' + jml + ')</button>';

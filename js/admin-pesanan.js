@@ -10,6 +10,21 @@ let adminPesananCache = [];
 let adminPesananRingkas = {};
 let adminPesananMode = 'Semua';    // Semua | b2c | b2b
 let adminPesananStatus = 'Semua';  // Semua | Sudah Bayar | Belum Bayar
+let adminPesananTahun = 'Semua';   // Semua | '2026' | '2027' | ...
+/** Tahun pesanan diambil dari tanggal masuknya. '' kalau tanggalnya tidak sah. */
+function tahunPesanan(p) {
+    // Dijaga dua lapis: new Date(null) menghasilkan tahun 1970, BUKAN tanggal
+    // tidak sah - tanpa pemeriksaan pertama ini akan muncul chip "1970" palsu.
+    if (!p || !p.created_at) return '';
+    const d = new Date(p.created_at);
+    return isNaN(d) ? '' : String(d.getFullYear());
+}
+/** Daftar tahun yang benar-benar ada di data, terbaru lebih dulu. */
+function daftarTahunPesanan() {
+    const set = {};
+    adminPesananCache.forEach(function(p) { const t = tahunPesanan(p); if (t) set[t] = true; });
+    return Object.keys(set).sort().reverse();
+}
 const STATUS_BAYAR = ['Belum Bayar', 'Sudah Bayar'];
 function sudahBayar(p) { return p.status_bayar === 'Sudah Bayar'; }
 
@@ -17,6 +32,7 @@ function renderAdminPesananPage() {
     const container = document.getElementById('app-container');
     container.innerHTML = adminPageShell('Monitoring Pesanan', [
       '<p class="text-sm mb-3" style="color:var(--text-muted)">Rekap seluruh pembelian dari etalase B2C Ritel maupun B2B Grosir. Hanya pesanan yang <b>sudah dikonfirmasi</b> Admin yang muncul di sini; pesanan baru menunggu di menu Konfirmasi Pesanan. Pengajuan RFQ ada di menu B2B.</p>',
+      '<div class="pu-tahun-baris"><span class="pu-tahun-label">Ringkasan tahun:</span><span class="flex flex-wrap gap-2" id="pesananTahunChips"></span></div>',
       '<div id="pesananRingkas" class="pu-stat-grid"></div>',
       '<div class="flex flex-wrap gap-2 mb-2" id="pesananModeChips"></div>',
       '<div class="flex flex-wrap gap-2 mb-3" id="pesananStatusChips"></div>',
@@ -49,6 +65,7 @@ function loadAdminPesanan() {
 }
 function setModePesananAdmin(m) { adminPesananMode = m; renderPesananTabel(); }
 function setStatusPesananAdmin(st) { adminPesananStatus = st; renderPesananTabel(); }
+function setTahunPesanan(t) { adminPesananTahun = t; renderPesananTabel(); }
 
 function labelModePesanan(m) { return m === 'b2b' ? 'B2B Grosir' : 'B2C Ritel'; }
 function tagModePesanan(m) {
@@ -100,7 +117,27 @@ function renderPesananTabel() {
 
     const items = adminPesananStatus === 'Semua' ? sesuaiMode
         : sesuaiMode.filter(function(x) { return adminPesananStatus === 'Sudah Bayar' ? sudahBayar(x) : !sudahBayar(x); });
-    renderRingkasPesanan(items);
+
+    // Saringan tahun SENGAJA hanya mengubah angka ringkasan, bukan isi tabel.
+    // Jadi Admin bisa melihat total setahun tertentu sambil tabelnya tetap
+    // menampilkan seluruh pesanan seperti biasa.
+    const tahunChips = document.getElementById('pesananTahunChips');
+    if (tahunChips) {
+        tahunChips.innerHTML = ['Semua'].concat(daftarTahunPesanan()).map(function(t) {
+            const jml = t === 'Semua' ? items.length : items.filter(function(x) { return tahunPesanan(x) === t; }).length;
+            return '<button class="chip chip-solid ' + (adminPesananTahun === t ? 'active' : '') +
+                   '" onclick="setTahunPesanan(\'' + t + '\')">' + (t === 'Semua' ? 'Semua Tahun' : t) + ' (' + jml + ')</button>';
+        }).join('') +
+        // Keterangan ini hanya muncul saat tahun tertentu dipilih. Tanpa itu,
+        // angka ringkasan setahun berdiri di atas tabel berisi semua tahun -
+        // mudah sekali terbaca keliru oleh orang yang tidak memilih tahunnya.
+        (adminPesananTahun === 'Semua' ? ''
+          : '<span class="pu-tahun-catatan"><i class="bi bi-info-circle"></i> Angka ringkasan di bawah khusus tahun ' +
+            escapeHtml(adminPesananTahun) + '. Tabelnya tetap menampilkan semua tahun.</span>');
+    }
+    const itemsRingkas = adminPesananTahun === 'Semua' ? items
+        : items.filter(function(x) { return tahunPesanan(x) === adminPesananTahun; });
+    renderRingkasPesanan(itemsRingkas);
 
     if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4" style="color:var(--text-muted)">' + (adminPesananCache.length ? 'Tidak ada pesanan dengan filter ini.' : 'Belum ada pesanan masuk.') + '</td></tr>';
