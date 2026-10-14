@@ -201,10 +201,16 @@ function ubahStatusBayar(id, status) {
     if (STATUS_BAYAR.indexOf(status) === -1) return;
     if (status === 'Sudah Bayar') {
         const p = cariPesananAdmin(id);
-        const tanya = 'Tandai pesanan ' + ((p && p.nomor) || '') + ' sebagai SUDAH BAYAR?\n\n' +
-                      'Setelah ini status dan total pesanannya ikut terkunci.\n' +
-                      'Masih bisa dibuka lagi lewat tombol gembok di kolom Status Bayar.';
-        if (!window.confirm(tanya)) { renderPesananTabel(); return; }
+        konfirmasiAksi({
+            judul: 'Tandai Sudah Bayar',
+            pesan: 'Tandai pesanan ' + ((p && p.nomor) || '') + ' sebagai SUDAH BAYAR?\n\n' +
+                   'Setelah ini status dan total pesanannya ikut terkunci.\n' +
+                   'Masih bisa dibuka lagi lewat tombol gembok di kolom Status Bayar.',
+            labelYa: 'Ya, Tandai Sudah Bayar',
+            onYa: function() { simpanStatusBayar(id, status); },
+            onTidak: function() { renderPesananTabel(); }
+        });
+        return;
     }
     simpanStatusBayar(id, status);
 }
@@ -217,10 +223,14 @@ function bukaKunciBayar(id) {
     const p = cariPesananAdmin(id);
     if (!p) { showToast('Gagal', 'Data pesanan tidak ditemukan. Muat ulang halaman lalu coba lagi.', 'danger'); return; }
     if (!sudahBayar(p)) return;
-    const tanya = 'Buka kunci pesanan ' + (p.nomor || '') + '?\n\n' +
-                  'Statusnya kembali menjadi BELUM BAYAR dan totalnya bisa diedit lagi.';
-    if (!window.confirm(tanya)) return;
-    simpanStatusBayar(id, 'Belum Bayar');
+    konfirmasiAksi({
+        judul: 'Buka Kunci Pesanan',
+        pesan: 'Buka kunci pesanan ' + (p.nomor || '') + '?\n\n' +
+               'Statusnya kembali menjadi BELUM BAYAR dan totalnya bisa diedit lagi.',
+        labelYa: 'Ya, Buka Kunci',
+        gaya: 'bahaya',
+        onYa: function() { simpanStatusBayar(id, 'Belum Bayar'); }
+    });
 }
 function simpanStatusBayar(id, status) {
     dbUpdate('pesanan', id, { status_bayar: status }).then(function(res) {

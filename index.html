@@ -139,6 +139,19 @@
 </div>
 </div>
 </div>
+<div id="konfirmasiModal" class="modal-overlay hidden" onclick="if(event.target===this) tutupKonfirmasi('tidak')">
+<div class="modal-box">
+<div class="modal-header">
+<h5 id="konfirmasiJudul">Konfirmasi</h5>
+<button class="modal-close" onclick="tutupKonfirmasi('tidak')"><i class="bi bi-x-lg"></i></button>
+</div>
+<div class="modal-body"><p id="konfirmasiPesan"></p></div>
+<div class="modal-footer">
+<button class="btn-ghost" onclick="tutupKonfirmasi('tidak')">Batal</button>
+<button class="btn-primary" id="konfirmasiYaBtn" onclick="tutupKonfirmasi('ya')">Ya, Lanjutkan</button>
+</div>
+</div>
+</div>
 <div id="toastContainer" class="toast-container"></div>
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
