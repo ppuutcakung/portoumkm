@@ -425,10 +425,20 @@ function hargaDasarTanpaPaket(d) {
  * Teks satu pilihan di dropdown paket: nama, harga, dan RINCIAN MENU, supaya
  * customer bisa membaca isi tiap paket tanpa harus memilihnya satu per satu.
  */
+/**
+ * Teks satu pilihan di dropdown paket: NAMA dan HARGA saja.
+ *
+ * Rincian menunya SENGAJA tidak dimasukkan ke sini. Daftar pilihan milik
+ * <select> digambar oleh browser, bukan oleh halaman - lebarnya mengikuti
+ * pilihan terpanjang dan TIDAK bisa dibatasi atau dibuat turun baris lewat
+ * CSS. Dengan menu ikut masuk, daftarnya melebar sampai keluar dari kotak
+ * kartu, bahkan keluar layar.
+ *
+ * Rincian menunya tetap terbaca utuh di panel bawah (puGambarMenuPaket),
+ * yang memang bisa dibuat rapi dan turun baris sendiri.
+ */
 function labelPaketLengkap(pk, d) {
-    let t = pk.nama_paket + ' - ' + formatRupiah(hargaPaket(pk, d));
-    if (pk.deskripsi_menu) t += ' (' + pk.deskripsi_menu + ')';
-    return t;
+    return pk.nama_paket + ' - ' + formatRupiah(hargaPaket(pk, d));
 }
 /** Tampilkan isi menu paket yang sedang dipilih, di bawah dropdown. */
 function puGambarMenuPaket() {
@@ -436,9 +446,17 @@ function puGambarMenuPaket() {
     const el = document.getElementById('puPaketMenu');
     if (!d || !el) return;
     const pk = (d.paketIdx !== null && d.paketIdx !== undefined) ? d.paket[d.paketIdx] : null;
-    if (!pk) { el.innerHTML = ''; el.style.display = 'none'; return; }
-    el.innerHTML = '<b>' + escapeHtml(pk.nama_paket) + '</b> &middot; ' + formatRupiah(hargaPaket(pk, d)) + ' / ' + escapeHtml(d.p.satuan || 'pcs') +
-        (pk.deskripsi_menu ? ('<div style="margin-top:3px;"><i class="bi bi-list-ul"></i> ' + escapeHtml(pk.deskripsi_menu) + '</div>') : '');
+    // Karena rincian menu tidak lagi ikut di dalam dropdown, panel ini jadi
+    // satu-satunya tempat customer membacanya - jadi saat belum memilih pun
+    // diberi petunjuk, bukan dikosongkan tanpa penjelasan.
+    if (!pk) {
+        el.innerHTML = '<span class="pu-paket-kosong"><i class="bi bi-arrow-up"></i> Pilih salah satu paket di atas untuk melihat rincian menunya.</span>';
+        el.style.display = 'block';
+        return;
+    }
+    el.innerHTML = '<div class="pu-paket-judul"><b>' + escapeHtml(pk.nama_paket) + '</b> &middot; ' +
+        formatRupiah(hargaPaket(pk, d)) + ' / ' + escapeHtml(d.p.satuan || 'pcs') + '</div>' +
+        (pk.deskripsi_menu ? ('<div class="pu-paket-isi"><i class="bi bi-list-ul"></i> <span>' + escapeHtml(pk.deskripsi_menu) + '</span></div>') : '');
     el.style.display = 'block';
 }
 function puPilihPaketIdx(v) {

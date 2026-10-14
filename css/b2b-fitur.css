@@ -197,7 +197,30 @@ body.admin-mode .pu-mode-strip { display: none; }
 /* ---------- PILIH PAKET DI POPUP DETAIL ---------- */
 .pu-paket { margin-top: 14px; border-radius: 10px; }
 .pu-paket.pu-invalid { outline: 2px solid #dc2626; outline-offset: 4px; }
-.pu-paket-menu { display: none; margin-top: 6px; font-size: 12px; color: var(--text-muted); background: var(--pu-tint); border-radius: 8px; padding: 6px 10px; }
+.pu-paket-menu { display: none; margin-top: 6px; font-size: 12px; color: var(--text-muted); background: var(--pu-tint); border-radius: 8px; padding: 8px 10px; }
+/* ---- Dropdown paket: dijaga tidak melebihi lebar kartu ----
+   Daftar pilihan yang terbuka digambar browser dan tidak bisa diatur CSS,
+   jadi pilihannya sengaja dibuat pendek (nama + harga) di labelPaketLengkap().
+   Aturan di bawah menjaga KOTAK dropdown-nya sendiri tetap pas di dalam kartu,
+   dan memotong dengan titik-titik kalau nama paketnya kepanjangan. */
+#puPaketSelect {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    text-overflow: ellipsis;
+}
+/* Rincian menu dipindah ke sini, jadi di sinilah teks panjang turun baris. */
+.pu-paket-judul { color: var(--text-primary); font-size: 12.5px; }
+.pu-paket-isi {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.pu-paket-isi > i { flex-shrink: 0; margin-top: 2px; }
+.pu-paket-kosong { display: inline-flex; align-items: center; gap: 5px; font-style: italic; }
 
 /* ============================================================
    CHIP SEKTOR: ikon di kiri + warna khas tiap sektor
