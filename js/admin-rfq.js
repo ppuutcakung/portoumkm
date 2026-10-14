@@ -83,11 +83,13 @@ function renderRfqTabel() {
     // Status ikut mengikuti tahun yang sedang dipilih.
     const tahunChips = document.getElementById('rfqTahunChips');
     if (tahunChips) {
-        tahunChips.innerHTML = ['Semua'].concat(daftarTahunRfq()).map(function(t) {
-            const jml = t === 'Semua' ? adminRfqCache.length : adminRfqCache.filter(function(r) { return tahunRfq(r) === t; }).length;
-            return '<button class="chip chip-solid ' + (adminRfqTahun === t ? 'active' : '') +
-                   '" onclick="setTahunRfq(\'' + t + '\')">' + (t === 'Semua' ? 'Semua Tahun' : t) + ' (' + jml + ')</button>';
-        }).join('');
+        tahunChips.innerHTML =
+            '<select class="form-select pu-tahun-pilih" onchange="setTahunRfq(this.value)">' +
+            ['Semua'].concat(daftarTahunRfq()).map(function(t) {
+                const jml = t === 'Semua' ? adminRfqCache.length : adminRfqCache.filter(function(r) { return tahunRfq(r) === t; }).length;
+                return '<option value="' + escapeAttr(t) + '"' + (adminRfqTahun === t ? ' selected' : '') + '>' +
+                       (t === 'Semua' ? 'Semua Tahun' : t) + ' (' + jml + ')</option>';
+            }).join('') + '</select>';
     }
     const sesuaiTahun = adminRfqTahun === 'Semua' ? adminRfqCache
         : adminRfqCache.filter(function(r) { return tahunRfq(r) === adminRfqTahun; });

@@ -932,6 +932,16 @@ select.form-select.pu-bayar-lunas:disabled {
     text-transform: uppercase;
     color: var(--text-muted);
 }
+/* Dropdown tahunnya dibuat ringkas - hanya selebar isinya, dan sedikit lebih
+   kecil dari form biasa supaya tidak mendominasi baris di atas ringkasan. */
+select.form-select.pu-tahun-pilih {
+    height: 32px;
+    width: auto;
+    font-size: 12px;
+    font-weight: 600;
+    padding-top: 0;
+    padding-bottom: 0;
+}
 /* Keterangan yang muncul HANYA saat tahun tertentu dipilih di Monitoring
    Pesanan, karena di sana tabelnya memang sengaja tidak ikut tersaring. */
 .pu-tahun-catatan {

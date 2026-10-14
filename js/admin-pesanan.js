@@ -123,11 +123,13 @@ function renderPesananTabel() {
     // menampilkan seluruh pesanan seperti biasa.
     const tahunChips = document.getElementById('pesananTahunChips');
     if (tahunChips) {
-        tahunChips.innerHTML = ['Semua'].concat(daftarTahunPesanan()).map(function(t) {
+        tahunChips.innerHTML =
+        '<select class="form-select pu-tahun-pilih" onchange="setTahunPesanan(this.value)">' +
+        ['Semua'].concat(daftarTahunPesanan()).map(function(t) {
             const jml = t === 'Semua' ? items.length : items.filter(function(x) { return tahunPesanan(x) === t; }).length;
-            return '<button class="chip chip-solid ' + (adminPesananTahun === t ? 'active' : '') +
-                   '" onclick="setTahunPesanan(\'' + t + '\')">' + (t === 'Semua' ? 'Semua Tahun' : t) + ' (' + jml + ')</button>';
-        }).join('') +
+            return '<option value="' + escapeAttr(t) + '"' + (adminPesananTahun === t ? ' selected' : '') + '>' +
+                   (t === 'Semua' ? 'Semua Tahun' : t) + ' (' + jml + ')</option>';
+        }).join('') + '</select>' +
         // Keterangan ini hanya muncul saat tahun tertentu dipilih. Tanpa itu,
         // angka ringkasan setahun berdiri di atas tabel berisi semua tahun -
         // mudah sekali terbaca keliru oleh orang yang tidak memilih tahunnya.
