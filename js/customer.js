@@ -122,13 +122,10 @@ function tutupPopupPromo() {
 function renderHomePage() {
     const container = document.getElementById('app-container');
     container.innerHTML = [
-      '<section class="page-wrap" style="padding-top:16px; padding-bottom:0;">',
-      '<span class="hero-badge">',
-      '<i class="bi bi-patch-check-fill"></i> UMKM Binaan United Tractors - YDBA',
-      '</span>',
-      '</section>',
-
-      '<section class="page-wrap" style="padding-top:8px;">',
+      // Label "UMKM Binaan United Tractors - YDBA" dihapus atas permintaan
+      // pengelola. Banner promo naik jadi elemen pertama di Beranda, jadi
+      // jarak atasnya diambil alih dari bagian yang dihapus ini.
+      '<section class="page-wrap" style="padding-top:16px;">',
       '<div id="promoBannerSlider" class="promo-banner-slider"></div>',
       '</section>',
 
@@ -203,7 +200,7 @@ let promoBannerData = [];
 let promoBannerIndex = 0;
 let promoBannerTimer = null;
 
-function renderPromoBannerSlider() {
+function renderPromoBannerSlider(mulaiDari) {
     const el = document.getElementById('promoBannerSlider');
     if (!el) return;
     if (!promoBannerData.length) {
@@ -211,19 +208,25 @@ function renderPromoBannerSlider() {
         return;
     }
     clearInterval(promoBannerTimer);
-    promoBannerIndex = 0;
+    // BUG LAMA: dulu baris ini selalu "promoBannerIndex = 0", padahal
+    // goToPromoBanner() memanggil fungsi ini SETELAH menyetel nomornya -
+    // jadi menekan titik navigasi selalu balik ke banner pertama.
+    // Sekarang nomor awalnya bisa ditentukan pemanggil.
+    promoBannerIndex = (typeof mulaiDari === 'number' &&
+                        mulaiDari >= 0 && mulaiDari < promoBannerData.length) ? mulaiDari : 0;
     const renderSlide = function() {
         const f = promoBannerData[promoBannerIndex];
         const src = f.gambar_url || ('https://placehold.co/1600x320/0ea5e9/ffffff?text=' + encodeURIComponent(f.judul || 'Promo'));
         const dots = promoBannerData.map(function(_, i) {
             return '<span class="' + (i === promoBannerIndex ? 'active' : '') + '" onclick="event.stopPropagation(); goToPromoBanner(' + i + ')"></span>';
         }).join('');
+        // Tulisan jenis & judul TIDAK lagi digambar di atas banner - banner
+        // ditampilkan sebagai gambar utuh. Judulnya tetap dipakai sebagai
+        // teks alternatif gambar (untuk pembaca layar dan saat gambar gagal
+        // dimuat), dan datanya tetap utuh di database serta tetap terlihat
+        // di menu Banner Promo pada portal admin.
         el.innerHTML = [
           '<img class="promo-banner-slide" src="' + escapeAttr(src) + '" alt="' + escapeAttr(f.judul) + '" onclick="previewPromoBanner(' + promoBannerIndex + ')">',
-          '<div class="promo-banner-caption">',
-          '<div class="text-[10px] font-bold uppercase tracking-wide opacity-80">' + escapeHtml(f.jenis || 'Promo') + '</div>',
-          '<div class="font-bold text-sm md:text-base">' + escapeHtml(f.judul) + '</div>',
-          '</div>',
           promoBannerData.length > 1 ? ('<div class="promo-banner-dots">' + dots + '</div>') : ''
         ].join('');
     };
@@ -235,7 +238,7 @@ function renderPromoBannerSlider() {
         }, 4500);
     }
 }
-function goToPromoBanner(i) { promoBannerIndex = i; renderPromoBannerSlider(); }
+function goToPromoBanner(i) { renderPromoBannerSlider(i); }
 /** Klik banner membuka gambar besar; hanya membawa nomor urut (bukan teks judul) di atribut HTML. */
 function previewPromoBanner(i) {
     const f = promoBannerData[i];
