@@ -331,6 +331,16 @@ function renderDetailProduk() {
             (p.minimal_order ? '<div class="pu-minorder"><i class="bi bi-info-circle"></i> Minimal Order: ' + escapeHtml(p.minimal_order) + '</div>' : '') + '</div>';
     }
 
+    // ---- keterangan stok ----
+    // Hanya muncul untuk produk yang stoknya memang dikelola. Angka sisanya
+    // TIDAK ditampilkan ke customer - cukup "tersedia" atau "habis" - supaya
+    // data persediaan tidak terbuka ke publik.
+    if (p.pakai_stok === true) {
+        harga += stokHabis(p)
+            ? '<div class="pu-stok-info habis"><i class="bi bi-x-octagon-fill"></i> Stok sedang habis. Hubungi admin lewat WhatsApp untuk menanyakan ketersediaan berikutnya.</div>'
+            : '<div class="pu-stok-info ada"><i class="bi bi-check-circle-fill"></i> Stok tersedia</div>';
+    }
+
     // ---- dropdown paket (tetap ada di mode Ritel maupun Grosir) ----
     let paketHtml = '';
     if (adaPaket) {
@@ -394,6 +404,14 @@ function renderDetailProduk() {
         aksi = '<button type="button" class="btn-primary" onclick="puPesanCustom()"><i class="bi bi-pencil-square"></i> Pesan Custom</button>';
     } else {
         aksi = '<button type="button" class="btn-primary" onclick="puTambahKeranjang()"><i class="bi bi-cart-plus"></i> Tambah ke Keranjang</button>';
+    }
+
+    // Produk habis: semua tombol pemesanan diganti satu tombol mati, tapi
+    // tombol WhatsApp tetap ada supaya customer masih bisa bertanya kapan
+    // barangnya tersedia lagi.
+    if (stokHabis(p)) {
+        aksi = '<button type="button" class="btn-primary pu-tombol-habis" disabled>' +
+               '<i class="bi bi-x-octagon"></i> Stok Habis</button>';
     }
 
     document.getElementById('detailProdukBody').innerHTML =
@@ -591,9 +609,33 @@ function puPastikanMoq() {
     if (inp) { inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus(); }
     return false;
 }
+/**
+ * Jangan biarkan jumlah yang dipesan melebihi stok yang tersedia.
+ *
+ * Ini kenyamanan di layar saja - penjaga sesungguhnya ada di fungsi
+ * submit_pesanan di database, supaya pesanan lewat jalur lain pun tertolak.
+ */
+function puPastikanStok() {
+    const d = puDetail;
+    if (!d || !d.p || d.p.pakai_stok !== true) return true;
+    const sisa = sisaStok(d.p);
+    const satuan = d.p.satuan || 'pcs';
+    if (sisa <= 0) {
+        showToast('Stok habis', d.p.nama_produk + ' sedang tidak tersedia.', 'warning');
+        return false;
+    }
+    if (Math.max(1, Number(d.qty) || 1) > sisa) {
+        showToast('Stok kurang', 'Stok ' + d.p.nama_produk + ' tinggal ' + sisa + ' ' + satuan + '.', 'warning');
+        const inp = document.getElementById('puQtyInput');
+        if (inp) { inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus(); }
+        return false;
+    }
+    return true;
+}
 function puTambahKeranjang() {
     const d = puDetail;
     if (!d || !puPastikanModel() || !puPastikanWarna() || !puPastikanPaket() || !puPastikanMoq()) return;
+    if (!puPastikanStok()) return;
     const p = d.p;
     const pk = (d.paketIdx !== null && d.paketIdx !== undefined) ? d.paket[d.paketIdx] : null;
     const nama = pk ? (p.nama_produk + ' - ' + pk.nama_paket) : p.nama_produk;

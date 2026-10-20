@@ -422,6 +422,7 @@ function productCardHtml(p, tanpaPenandaSorot) {
       '<div class="product-card-img-wrap">',
       img,
       badgeText ? ('<span class="badge-discount">' + badgeText + '</span>') : '',
+      stokHabis(p) ? '<span class="pu-habis-tirai"><span class="pu-habis-teks">Stok Habis</span></span>' : '',
       (p.disorot === true && !tanpaPenandaSorot) ? '<span class="pu-badge-sorot"><i class="bi bi-star-fill"></i> Pilihan</span>' : '',
       ratingVal > 0 ? ('<span class="badge-rating"><i class="bi bi-star-fill"></i> ' + ratingVal.toFixed(1) + (p.jumlah_ulasan ? (' (' + p.jumlah_ulasan + ')') : '') + '</span>') : '',
       '</div>',
@@ -436,7 +437,9 @@ function productCardHtml(p, tanpaPenandaSorot) {
       '</div>',
       '<div class="product-card-footer pu-card-actions" onclick="event.stopPropagation()">',
       '<button type="button" class="btn-ghost" onclick="bukaDetailProduk(\'' + id + '\')">' + labelDua('bi-eye', 'Detail', 'Detail') + '</button>',
-      '<button type="button" class="btn-primary" onclick="aksiUtamaKartu(\'' + id + '\')">' + labelAksiKartu(p) + '</button>',
+      stokHabis(p)
+        ? '<button type="button" class="btn-primary pu-tombol-habis" disabled>Stok Habis</button>'
+        : ('<button type="button" class="btn-primary" onclick="aksiUtamaKartu(\'' + id + '\')">' + labelAksiKartu(p) + '</button>'),
       '</div>',
       '</div>'
     ].join('');
@@ -448,6 +451,12 @@ function productCardHtml(p, tanpaPenandaSorot) {
 function aksiUtamaKartu(id) {
     const p = AppState.produkIndex[id];
     if (!p) return;
+    // Penjaga kedua: tombolnya memang sudah dimatikan saat stok habis, tapi
+    // fungsi ini juga dipanggil dari tempat lain, jadi diperiksa ulang di sini.
+    if (stokHabis(p)) {
+        showToast('Stok Habis', escapeHtml(p.nama_produk) + ' sedang tidak tersedia.', 'warning');
+        return;
+    }
     if (isB2B()) {
         if (bisaPesanLangsungKartu(p)) bukaDetailProduk(id);   // perlu jumlah & harga bertingkat
         else bukaRfqUntukProdukId(id, 'RFQ');

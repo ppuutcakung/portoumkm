@@ -129,6 +129,7 @@ function navigateTo(pageName, options) {
         adminKonfirmasi: renderAdminKonfirmasiPage,
         adminPesanan: renderAdminPesananPage,
         adminRfq: renderAdminRfqPage,
+        adminStok: renderAdminStokPage,
         adminPromosi: renderAdminPromosiPage,
         adminSettings: renderAdminSettingsPage
     };

@@ -351,6 +351,17 @@ function openProdukForm(p) {
       '<div class="form-group hidden" id="pfSubLainnyaWrap"><label class="form-label">Tulis Sub-kategori Sendiri *</label>',
       '<input class="form-input" id="pfSubLainnya" maxlength="60" placeholder="mis. Katering Harian">',
       '<p class="pf-foto-info">Teks ini otomatis muncul sebagai Tag Cepat di katalog publik.</p></div>',
+      // ---- Manajemen stok (opsional per produk) ----
+      // Sengaja opsional: produk yang dimasak per pesanan (nasi box) tidak
+      // punya persediaan, jadi memaksakan stok ke semua produk malah
+      // menyusahkan admin tanpa manfaat.
+      '<div class="pf-section"><div class="pf-section-title">Kelola stok produk ini?</div>',
+      '<label class="pf-cek"><input type="checkbox" id="pfPakaiStok" ', (p.pakai_stok ? 'checked' : ''), ' onchange="toggleKotakStok()"> Ya, produk ini punya persediaan yang perlu dihitung</label>',
+      '<p class="pf-foto-info">Cocok untuk barang jadi seperti kerajinan atau kemasan. Jangan dicentang untuk produk yang dibuat per pesanan. Stok otomatis berkurang saat pesanan <b>dikonfirmasi</b>, dan kembali lagi kalau konfirmasinya dibatalkan.</p>',
+      '<div id="pfStokWrap" class="grid grid-cols-2 gap-3 ', (p.pakai_stok ? '' : 'hidden'), '" style="margin-top:8px;">',
+      '<div class="form-group"><label class="form-label">Jumlah Stok Saat Ini</label><input class="form-input" type="number" min="0" id="pfStok" value="', escapeAttr(p.stok === undefined || p.stok === null ? 0 : p.stok), '"></div>',
+      '<div class="form-group"><label class="form-label">Batas Stok Menipis</label><input class="form-input" type="number" min="0" id="pfStokMinimum" value="', escapeAttr(p.stok_minimum === undefined || p.stok_minimum === null ? 5 : p.stok_minimum), '"></div>',
+      '</div></div>',
       '<div class="pf-section"><div class="pf-section-title">Foto menunjukkan model berbeda?</div>',
       '<label class="pf-cek"><input type="checkbox" id="pfBedaModel" ', (p.foto_beda_model ? 'checked' : ''), ' onchange="renderFotoProduk()"> Ya, tiap foto adalah model/motif/tipe yang berbeda</label>',
       '<p class="pf-foto-info">Kalau dicentang, customer WAJIB memilih model saat memesan (Gambar 1, Gambar 2, dan seterusnya), dan pilihannya ikut tercatat di pesanan serta dokumen PDF. Butuh minimal 2 foto. Beri nama tiap foto di bawah bila perlu, misalnya "Motif Parang".</p>',
@@ -670,6 +681,13 @@ function renderSubKategoriOptions(kategoriKey, selected) {
     toggleSubLainnya();
 }
 /** Tampilkan kolom tulis manual hanya saat "Lainnya" dipilih. */
+/** Sembunyikan kotak angka stok kalau produk ini tidak dikelola stoknya. */
+function toggleKotakStok() {
+    const cek = document.getElementById('pfPakaiStok');
+    const wrap = document.getElementById('pfStokWrap');
+    if (cek && wrap) wrap.classList.toggle('hidden', !cek.checked);
+}
+
 function toggleSubLainnya() {
     const sel = document.getElementById('pfSubKategori');
     const wrap = document.getElementById('pfSubLainnyaWrap');
@@ -746,6 +764,9 @@ async function submitProdukForm(e) {
         showToast('Peringatan', 'Centang "foto menunjukkan model berbeda" membutuhkan minimal 2 foto. Tambahkan foto dulu, atau hilangkan centangnya.', 'warning');
         return;
     }
+    const pakaiStok = el('pfPakaiStok') ? el('pfPakaiStok').checked : false;
+    const stokNilai = Math.max(0, Number(el('pfStok') ? el('pfStok').value : 0) || 0);
+    const stokMin = Math.max(0, Number(el('pfStokMinimum') ? el('pfStokMinimum').value : 5) || 0);
     const record = {
         nama_produk: el('pfNama').value.trim(),
         nama_umkm: el('pfUmkm').value.trim(),
@@ -768,7 +789,13 @@ async function submitProdukForm(e) {
         sertifikasi: bacaSertifikatDariForm(),
         ketahanan_simpan: el('pfKetahanan').value.trim(),
         warna_pilihan: kategori === 'PortoKriya' ? parseDaftarWarna(el('pfWarna').value) : [],
-        foto_beda_model: bedaModelAktif()
+        foto_beda_model: bedaModelAktif(),
+        pakai_stok: pakaiStok,
+        // Kalau stok tidak dikelola, angkanya tidak dipakai di mana pun -
+        // tetap ditulis 0 supaya tidak ada nilai lama yang menyesatkan
+        // kalau nanti stoknya dinyalakan kembali.
+        stok: pakaiStok ? stokNilai : 0,
+        stok_minimum: pakaiStok ? stokMin : 5
     };
     const btn = e.target.querySelector('button[type="submit"]');
     const asli = btn.innerHTML;

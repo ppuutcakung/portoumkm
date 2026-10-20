@@ -112,3 +112,24 @@ function normalisasiNoWa(no) {
     if (d.startsWith('0')) d = '62' + d.slice(1);
     return d;
 }
+
+/**
+ * Apakah produk ini sedang habis?
+ *
+ * Hanya produk yang stoknya memang DIKELOLA (pakai_stok) yang bisa dianggap
+ * habis. Produk yang dibuat per pesanan - nasi box, katering - tidak punya
+ * persediaan, jadi selamanya dianggap tersedia.
+ *
+ * Nilai stok ikut terbawa dari database lewat get_produk_list dan
+ * get_produk_detail tanpa perlu permintaan tambahan.
+ */
+function stokHabis(p) {
+    if (!p || p.pakai_stok !== true) return false;
+    return (Number(p.stok) || 0) <= 0;
+}
+
+/** Sisa stok sebagai angka; 0 kalau produknya tidak dikelola stoknya. */
+function sisaStok(p) {
+    if (!p || p.pakai_stok !== true) return 0;
+    return Math.max(0, Number(p.stok) || 0);
+}

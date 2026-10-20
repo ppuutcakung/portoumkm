@@ -982,3 +982,123 @@ select.form-select.pu-tahun-pilih {
 @media (max-width: 720px) {
     .pu-tahun-catatan { font-size: 11px; padding: 4px 9px; }
 }
+
+/* ============================================================
+   MANAJEMEN STOK & LAPORAN BARANG
+   ============================================================ */
+
+/* ---- Sisi customer ---- */
+/* Tirai abu-abu di atas foto produk yang habis. Sengaja menutup foto,
+   bukan sekadar label kecil, supaya langsung terbaca saat menggulir. */
+.pu-habis-tirai {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.72); backdrop-filter: saturate(0.2);
+    z-index: 2; border-radius: inherit;
+}
+.pu-habis-teks {
+    background: #4b5563; color: #fff; font-weight: 800; font-size: 12px;
+    letter-spacing: .3px; padding: 5px 12px; border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+button.pu-tombol-habis,
+button.pu-tombol-habis:hover {
+    background: #9ca3af !important; border-color: #9ca3af !important;
+    color: #fff !important; cursor: not-allowed; opacity: 1;
+}
+.pu-stok-info {
+    margin-top: 6px; font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+}
+.pu-stok-info.ada { color: #15803d; }
+.pu-stok-info.habis { color: #b91c1c; line-height: 1.45; align-items: flex-start; }
+.pu-stok-info.habis > i { margin-top: 2px; flex-shrink: 0; }
+
+/* ---- Halaman admin: tab ---- */
+.pu-stok-tabbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.pu-stok-tab {
+    border: 1px solid var(--border-color); background: #fff; color: var(--text-muted);
+    font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 10px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.pu-stok-tab.aktif { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* ---- Kartu ringkasan ---- */
+.pu-stok-kartu-baris {
+    display: grid; gap: 12px; margin-bottom: 14px;
+    grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 992px) { .pu-stok-kartu-baris { grid-template-columns: repeat(4, 1fr); } }
+.pu-stok-kartu {
+    background: #fff; border: 1px solid var(--border-color); border-radius: 12px;
+    padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+}
+.pu-stok-kartu-ikon {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #f3f4f6; color: #4b5563; font-size: 17px;
+}
+.pu-stok-kartu-angka { font-size: 19px; font-weight: 800; color: var(--text-primary); line-height: 1.15; }
+.pu-stok-kartu-label { font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
+.pu-stok-kartu.awas   .pu-stok-kartu-ikon { background: #fef3c7; color: #b45309; }
+.pu-stok-kartu.bahaya .pu-stok-kartu-ikon { background: #fee2e2; color: #b91c1c; }
+.pu-stok-kartu.cepat  .pu-stok-kartu-ikon { background: #dcfce7; color: #15803d; }
+.pu-stok-kartu.lambat .pu-stok-kartu-ikon { background: #fef3c7; color: #b45309; }
+.pu-stok-kartu.diam   .pu-stok-kartu-ikon { background: #f3f4f6; color: #6b7280; }
+
+/* ---- Alarm stok menipis ---- */
+.pu-stok-alarm {
+    display: flex; align-items: flex-start; gap: 8px; margin-bottom: 14px;
+    background: #fffbeb; border: 1px solid #fcd34d; border-left: 4px solid #d97706;
+    color: #92400e; border-radius: 8px; padding: 10px 12px;
+    font-size: 12.5px; line-height: 1.5;
+}
+.pu-stok-alarm > i { margin-top: 2px; flex-shrink: 0; }
+
+/* ---- Alat: pencarian, chip saringan, rentang ---- */
+.pu-stok-alat {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px;
+}
+.pu-stok-cari { max-width: 280px; }
+.pu-stok-label { font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
+select.form-select.pu-stok-rentang { width: auto; min-width: 140px; }
+.pu-stok-chip {
+    border: 1px solid var(--border-color); background: #fff; color: var(--text-muted);
+    font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+}
+.pu-stok-chip.aktif { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* ---- Angka & penanda status ---- */
+.pu-stok-angka { font-weight: 800; font-size: 15px; }
+.pu-stok-angka.aman    { color: #15803d; }
+.pu-stok-angka.menipis { color: #b45309; }
+.pu-stok-angka.habis   { color: #b91c1c; }
+.pu-stok-tanda, .pu-stok-gerak {
+    display: inline-block; font-size: 11px; font-weight: 800;
+    padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+.pu-stok-tanda.aman    { background: #dcfce7; color: #15803d; }
+.pu-stok-tanda.menipis { background: #fef3c7; color: #b45309; }
+.pu-stok-tanda.habis   { background: #fee2e2; color: #b91c1c; }
+.pu-stok-gerak.cepat   { background: #dcfce7; color: #15803d; }
+.pu-stok-gerak.lambat  { background: #fef3c7; color: #b45309; }
+.pu-stok-gerak.diam    { background: #f3f4f6; color: #6b7280; }
+.pu-stok-samar { color: var(--text-muted); }
+.pu-stok-delta { font-weight: 800; }
+.pu-stok-delta.naik  { color: #15803d; }
+.pu-stok-delta.turun { color: #b91c1c; }
+.pu-stok-kini {
+    background: var(--pu-tint); border-radius: 8px; padding: 8px 10px;
+    margin-bottom: 10px; font-size: 13px; color: var(--text-primary);
+}
+
+/* ---- Catatan cara hitung di laporan ---- */
+.pu-stok-catatan {
+    background: #f8fafc; border: 1px solid var(--border-color);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 14px;
+    font-size: 12px; color: var(--text-muted); line-height: 1.6;
+}
+
+/* ---- Susunan chart ---- */
+.pu-stok-chart-baris { display: grid; gap: 14px; grid-template-columns: 1fr; margin-bottom: 14px; }
+@media (min-width: 992px) { .pu-stok-chart-baris { grid-template-columns: 1.5fr 1fr; } }
