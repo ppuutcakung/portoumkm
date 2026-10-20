@@ -122,6 +122,15 @@ function renderAdminSettingsPage() {
       '<h3 class="font-bold mb-1" style="color:var(--text-primary)"><i class="bi bi-key"></i> Ubah Password Admin</h3>',
       '<p class="text-xs mb-4" style="color:var(--text-muted)">Bisa diganti kapan saja secara berkala.</p>',
       '<form id="credentialsForm" onsubmit="submitCredentialsForm(event)">',
+      // Kolom email tersembunyi. Chrome memperingatkan form berisi password
+      // yang tidak punya kolom username ("Password forms should have
+      // (optionally hidden) username fields"), karena pengelola kata sandi
+      // tidak tahu password ini milik akun mana. Kolom ini tidak terlihat,
+      // tidak bisa diisi, dan tidak ikut dikirim ke mana pun - hanya penanda
+      // bagi browser. Nilainya diambil dari sesi admin yang sedang login.
+      '<input type="text" id="ccUsername" autocomplete="username" value="',
+      escapeAttr(((AppState.session || {}).user || {}).email || ''),
+      '" readonly hidden aria-hidden="true" tabindex="-1">',
       '<div class="form-group"><label class="form-label">Password Baru *</label><input class="form-input" type="password" id="ccNewPassword" required autocomplete="new-password" minlength="6"></div>',
       '<div class="form-group"><label class="form-label">Ulangi Password Baru *</label><input class="form-input" type="password" id="ccConfirmPassword" required autocomplete="new-password"></div>',
       '<button type="submit" class="btn-primary w-full" style="height:44px;"><i class="bi bi-shield-lock"></i> Perbarui Password</button>',
