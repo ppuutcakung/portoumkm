@@ -1102,3 +1102,55 @@ select.form-select.pu-stok-rentang { width: auto; min-width: 140px; }
 /* ---- Susunan chart ---- */
 .pu-stok-chart-baris { display: grid; gap: 14px; grid-template-columns: 1fr; margin-bottom: 14px; }
 @media (min-width: 992px) { .pu-stok-chart-baris { grid-template-columns: 1.5fr 1fr; } }
+
+/* ============================================================
+   NAVBAR MENJOROK KE DALAM (DESKTOP)
+   ============================================================
+   Semula .public-navbar membentang penuh dari tepi kiri ke tepi kanan
+   layar, sementara isinya sudah dibatasi 1280px - jadi garis bawahnya
+   menyentuh tepi padahal kartu produk tidak. Di sini latar dan garis itu
+   dipindahkan ke .navbar-main, supaya navbar tampak sebagai kartu yang
+   berhenti SEJAJAR dengan kartu produk.
+
+   Perhitungan lebarnya:
+     .page-wrap  = max-width 1280px, padding 24px -> isi 1232px
+     navbar      = padding 24px di .public-navbar + max-width 1232px
+   Keduanya menghasilkan tepi kiri-kanan yang sama persis.
+
+   Ditulis di sini, bukan di style.css, supaya aturan aslinya utuh dan
+   perubahan ini gampang dicabut kalau tidak jadi dipakai.
+   Halaman admin tidak terpengaruh: style.css sudah menyembunyikan
+   .public-navbar saat body.admin-mode.
+   ============================================================ */
+.public-navbar {
+    /* Strip tetap SOLID berwarna latar halaman - bukan transparan - supaya
+       konten yang tergulir bersembunyi di baliknya dan tidak mengintip di
+       samping kartu navbar. */
+    background: var(--bg-primary);
+    border-bottom: 0;
+    padding: 12px 24px;
+}
+.navbar-main {
+    max-width: 1232px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
+}
+
+/* Di HP navbar kembali menempel tepi: kartu melayang hanya memakan ruang
+   layar yang memang sudah sempit. */
+@media (max-width: 640px) {
+    .public-navbar {
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+        padding: 0;
+    }
+    .navbar-main {
+        max-width: none;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+}
