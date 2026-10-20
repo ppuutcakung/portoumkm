@@ -36,4 +36,20 @@ function simpanKeCache(key, data) {
 const KATEGORI_LABEL = { PortoRasa: 'PortoRasa (Kuliner)', PortoKriya: 'PortoKriya (Kerajinan)', PortoTani: 'PortoTani (Pertanian)' };
 
 const PUBLIC_PAGES = ['home', 'katalog', 'mitra', 'keranjang', 'adminLogin'];
-const ADMIN_PAGES = ['adminDashboard', 'adminProduk', 'adminHero', 'adminFlyer', 'adminMitra', 'adminUmkm', 'adminKonfirmasi', 'adminPesanan', 'adminRfq', 'adminSettings'];
+/**
+ * Daftar halaman Admin.
+ *
+ * PENTING: setiap halaman admin WAJIB terdaftar di sini. Daftar ini dipakai
+ * untuk TIGA hal sekaligus di navigateTo():
+ *   1. menyalakan body.admin-mode  -> navbar & footer customer disembunyikan
+ *   2. menampilkan sidebar Admin
+ *   3. MENJAGA halaman: yang belum login dilempar ke adminLogin
+ *
+ * Halaman yang punya penggambar dan menu sidebar tapi LUPA didaftarkan di
+ * sini akan tampil dengan kerangka customer (lengkap dengan tombol
+ * Ritel/Grosir dan keranjang) dan tidak ikut dijaga login. Pernah terjadi
+ * pada 'adminPromosi' dan 'adminStok'. Uji t_adminpages.js sekarang
+ * membandingkan daftar ini dengan daftar penggambar di router.js supaya
+ * kelalaian serupa tertangkap otomatis.
+ */
+const ADMIN_PAGES = ['adminDashboard', 'adminProduk', 'adminHero', 'adminFlyer', 'adminMitra', 'adminUmkm', 'adminKonfirmasi', 'adminPesanan', 'adminRfq', 'adminPromosi', 'adminStok', 'adminSettings'];
