@@ -170,6 +170,9 @@ function perbaruiLencanaKonfirmasi(jumlah) {
     const n = Number(jumlah) || 0;
     el.textContent = n > 99 ? '99+' : String(n);
     el.style.display = n > 0 ? 'inline-flex' : 'none';
+    // Ikut perbarui lencana di judul kelompok "Penjualan", supaya tanda ada
+    // antrean tetap terlihat walau kelompoknya sedang ditutup.
+    if (typeof perbaruiLencanaGrup === 'function') perbaruiLencanaGrup();
 }
 /** Ambil jumlah antrean dari server (dipanggil saat halaman Admin dibuka). */
 function muatLencanaKonfirmasi() {

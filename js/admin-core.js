@@ -207,3 +207,84 @@ function pantauTabelHp() {
     }).observe(wadah, { childList: true, subtree: true });
     jalankan();
 }
+
+// ============================================================
+// KELOMPOK MENU SIDEBAR ADMIN (dropdown)
+// ============================================================
+/**
+ * Menu Admin dikelompokkan supaya tidak jadi satu daftar panjang.
+ * Isi tiap kelompok ditulis di sini juga - bukan hanya di HTML - supaya
+ * kelompok yang memuat halaman aktif bisa dibuka otomatis, dan supaya
+ * lencana antrean tetap terlihat walau kelompoknya tertutup.
+ */
+const GRUP_SIDEBAR = {
+    Aset:  ['adminProduk', 'adminStok'],
+    Iklan: ['adminHero', 'adminFlyer', 'adminMitra', 'adminPromosi'],
+    Jual:  ['adminKonfirmasi', 'adminPesanan', 'adminRfq']
+};
+const KUNCI_GRUP_SIDEBAR = 'portoumkm_grup_sidebar';
+
+/** Baca keadaan buka/tutup yang terakhir dipakai admin. */
+function bacaKeadaanGrup() {
+    try {
+        const t = localStorage.getItem(KUNCI_GRUP_SIDEBAR);
+        return t ? JSON.parse(t) : {};
+    } catch (e) { return {}; }   // localStorage bisa diblokir; jangan sampai menu rusak
+}
+function simpanKeadaanGrup(k) {
+    try { localStorage.setItem(KUNCI_GRUP_SIDEBAR, JSON.stringify(k)); } catch (e) {}
+}
+
+function setGrupTerbuka(kode, terbuka) {
+    const isi = document.getElementById('isiGrup' + kode);
+    const judul = document.getElementById('judulGrup' + kode);
+    if (!isi || !judul) return;
+    isi.classList.toggle('tertutup', !terbuka);
+    judul.classList.toggle('tertutup', !terbuka);
+    judul.setAttribute('aria-expanded', terbuka ? 'true' : 'false');
+}
+
+function toggleGrupSidebar(kode) {
+    const isi = document.getElementById('isiGrup' + kode);
+    if (!isi) return;
+    const akanDibuka = isi.classList.contains('tertutup');
+    setGrupTerbuka(kode, akanDibuka);
+    const k = bacaKeadaanGrup();
+    k[kode] = akanDibuka;
+    simpanKeadaanGrup(k);
+    perbaruiLencanaGrup();
+}
+
+/**
+ * Samakan tampilan kelompok dengan halaman yang sedang dibuka.
+ * Kelompok yang memuat halaman aktif SELALU dibuka - kalau tidak, admin
+ * tidak bisa melihat di mana posisinya sekarang.
+ */
+function segarkanGrupSidebar(halamanAktif) {
+    const k = bacaKeadaanGrup();
+    Object.keys(GRUP_SIDEBAR).forEach(function (kode) {
+        const memuatAktif = GRUP_SIDEBAR[kode].indexOf(halamanAktif) !== -1;
+        const terbuka = memuatAktif ? true : (k[kode] !== false);
+        setGrupTerbuka(kode, terbuka);
+        const judul = document.getElementById('judulGrup' + kode);
+        if (judul) judul.classList.toggle('aktif', memuatAktif);
+    });
+    perbaruiLencanaGrup();
+}
+
+/**
+ * Lencana antrean konfirmasi ikut ditampilkan di judul kelompoknya saat
+ * kelompok itu tertutup. Tanpa ini, menutup kelompok "Penjualan" akan
+ * menyembunyikan tanda ada pesanan menunggu - padahal itu justru hal yang
+ * paling perlu terlihat.
+ */
+function perbaruiLencanaGrup() {
+    const sumber = document.getElementById('lencanaKonfirmasi');
+    const tujuan = document.getElementById('lencanaGrupJual');
+    const isi = document.getElementById('isiGrupJual');
+    if (!tujuan) return;
+    const adaAntrean = !!sumber && sumber.style.display !== 'none';
+    const tertutup = !!isi && isi.classList.contains('tertutup');
+    tujuan.textContent = sumber ? sumber.textContent : '0';
+    tujuan.style.display = (adaAntrean && tertutup) ? 'inline-flex' : 'none';
+}

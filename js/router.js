@@ -111,6 +111,8 @@ function navigateTo(pageName, options) {
     document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.page === pageName));
     document.querySelectorAll('.mobile-nav-link').forEach(l => l.classList.toggle('active', l.dataset.page === pageName));
     document.querySelectorAll('.admin-nav-link').forEach(l => l.classList.toggle('active', l.dataset.page === pageName));
+    // Buka kelompok menu yang memuat halaman ini, supaya posisi admin terlihat.
+    if (typeof segarkanGrupSidebar === 'function') segarkanGrupSidebar(pageName);
     const container = document.getElementById('app-container');
     container.innerHTML = '<div class="page-wrap"><div class="empty-state"><div class="spinner-brand" style="margin:0 auto;"></div><p class="mt-3">Memuat halaman...</p></div></div>';
     window.scrollTo(0, 0);

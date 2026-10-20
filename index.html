@@ -85,16 +85,31 @@
 </div>
 <ul class="admin-nav">
 <li><a href="javascript:void(0)" onclick="navigateTo('adminDashboard')" class="admin-nav-link" data-page="adminDashboard"><i class="bi bi-speedometer2"></i><span>Ringkasan &amp; Statistik</span></a></li>
+<li class="pu-grup" data-grup="Aset">
+<button type="button" class="pu-grup-judul" id="judulGrupAset" aria-expanded="true" aria-controls="isiGrupAset" onclick="toggleGrupSidebar('Aset')"><i class="bi bi-boxes pu-grup-ikon"></i><span class="pu-grup-teks">Aset Produk</span><span class="pu-grup-lencana" id="lencanaGrupAset" style="display:none;">0</span><i class="bi bi-chevron-down pu-grup-panah"></i></button>
+<ul class="pu-grup-isi" id="isiGrupAset">
 <li><a href="javascript:void(0)" onclick="navigateTo('adminProduk')" class="admin-nav-link" data-page="adminProduk"><i class="bi bi-box-seam"></i><span>Manajemen Produk</span></a></li>
 <li><a href="javascript:void(0)" onclick="navigateTo('adminStok')" class="admin-nav-link" data-page="adminStok"><i class="bi bi-clipboard-data"></i><span>Manajemen Stok</span></a></li>
+</ul>
+</li>
+<li class="pu-grup" data-grup="Iklan">
+<button type="button" class="pu-grup-judul" id="judulGrupIklan" aria-expanded="true" aria-controls="isiGrupIklan" onclick="toggleGrupSidebar('Iklan')"><i class="bi bi-badge-ad pu-grup-ikon"></i><span class="pu-grup-teks">Iklan Promosi</span><span class="pu-grup-lencana" id="lencanaGrupIklan" style="display:none;">0</span><i class="bi bi-chevron-down pu-grup-panah"></i></button>
+<ul class="pu-grup-isi" id="isiGrupIklan">
 <li><a href="javascript:void(0)" onclick="navigateTo('adminHero')" class="admin-nav-link" data-page="adminHero"><i class="bi bi-images"></i><span>Galeri Hero</span></a></li>
 <li><a href="javascript:void(0)" onclick="navigateTo('adminFlyer')" class="admin-nav-link" data-page="adminFlyer"><i class="bi bi-megaphone"></i><span>Banner Promo</span></a></li>
 <li><a href="javascript:void(0)" onclick="navigateTo('adminMitra')" class="admin-nav-link" data-page="adminMitra"><i class="bi bi-building"></i><span>Customer</span></a></li>
-<li><a href="javascript:void(0)" onclick="navigateTo('adminUmkm')" class="admin-nav-link" data-page="adminUmkm"><i class="bi bi-people"></i><span>Data UMKM</span></a></li>
+<li><a href="javascript:void(0)" onclick="navigateTo('adminPromosi')" class="admin-nav-link" data-page="adminPromosi"><i class="bi bi-send"></i><span>Promosi WhatsApp</span></a></li>
+</ul>
+</li>
+<li class="pu-grup" data-grup="Jual">
+<button type="button" class="pu-grup-judul" id="judulGrupJual" aria-expanded="true" aria-controls="isiGrupJual" onclick="toggleGrupSidebar('Jual')"><i class="bi bi-cart-check pu-grup-ikon"></i><span class="pu-grup-teks">Penjualan</span><span class="pu-grup-lencana" id="lencanaGrupJual" style="display:none;">0</span><i class="bi bi-chevron-down pu-grup-panah"></i></button>
+<ul class="pu-grup-isi" id="isiGrupJual">
 <li><a href="javascript:void(0)" onclick="navigateTo('adminKonfirmasi')" class="admin-nav-link" data-page="adminKonfirmasi"><i class="bi bi-inbox"></i><span>Konfirmasi Pesanan</span><span id="lencanaKonfirmasi" class="pu-lencana" style="display:none;">0</span></a></li>
 <li><a href="javascript:void(0)" onclick="navigateTo('adminPesanan')" class="admin-nav-link" data-page="adminPesanan"><i class="bi bi-bag-check"></i><span>Monitoring Pesanan</span></a></li>
 <li><a href="javascript:void(0)" onclick="navigateTo('adminRfq')" class="admin-nav-link" data-page="adminRfq"><i class="bi bi-file-earmark-text"></i><span>B2B: RFQ &amp; Sampel</span></a></li>
-<li><a href="javascript:void(0)" onclick="navigateTo('adminPromosi')" class="admin-nav-link" data-page="adminPromosi"><i class="bi bi-send"></i><span>Promosi WhatsApp</span></a></li>
+</ul>
+</li>
+<li><a href="javascript:void(0)" onclick="navigateTo('adminUmkm')" class="admin-nav-link" data-page="adminUmkm"><i class="bi bi-people"></i><span>Data UMKM</span></a></li>
 <li><a href="javascript:void(0)" onclick="navigateTo('adminSettings')" class="admin-nav-link" data-page="adminSettings"><i class="bi bi-gear"></i><span>Pengaturan WhatsApp &amp; Sistem</span></a></li>
 </ul>
 <div class="admin-sidebar-footer">
