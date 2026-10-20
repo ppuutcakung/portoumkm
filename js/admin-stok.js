@@ -15,6 +15,7 @@
  */
 
 let stokData = null;          // hasil get_laporan_stok terakhir
+let stokGagal = '';           // pesan error terakhir, kalau pemuatan gagal
 let stokHari = 30;            // rentang hari laporan yang sedang dipilih
 let stokTab = 'kelola';       // 'kelola' | 'laporan'
 let stokCariTeks = '';
@@ -43,13 +44,28 @@ function renderAdminStokPage() {
 async function muatDataStok() {
     const res = await dbRpc('get_laporan_stok', { p_hari: stokHari });
     if (!res.success) {
-        document.getElementById('stokIsi').innerHTML =
-            '<div class="empty-state"><i class="bi bi-exclamation-circle"></i>Gagal memuat data stok.<br><span class="text-xs">' +
-            escapeHtml(res.message) + '</span></div>';
+        // Pesan error disimpan, bukan sekadar ditulis sekali ke layar.
+        // Kalau tidak, pindah tab akan menampilkan "belum ada produk" -
+        // keliru, karena masalahnya gagal memuat, bukan datanya kosong.
+        stokGagal = res.message || 'Tidak diketahui';
+        stokData = null;
+        gambarIsiStok();
         return;
     }
+    stokGagal = '';
     stokData = res.data || { ringkas: {}, items: [] };
     gambarIsiStok();
+}
+
+function gambarGagalStok() {
+    document.getElementById('stokIsi').innerHTML =
+        '<div class="card p-4"><div class="empty-state">' +
+        '<i class="bi bi-exclamation-triangle" style="color:#b45309"></i>' +
+        'Gagal memuat data stok.' +
+        '<div class="text-xs mt-2" style="color:var(--text-muted)">' + escapeHtml(stokGagal) + '</div>' +
+        '<button class="btn btn-primary mt-3" onclick="muatDataStok()">' +
+        '<i class="bi bi-arrow-clockwise"></i> Coba Lagi</button>' +
+        '</div></div>';
 }
 
 function gantiTabStok(tab) {
@@ -62,6 +78,7 @@ function gambarIsiStok() {
     const bLaporan = document.getElementById('stokTabLaporan');
     if (bKelola) bKelola.classList.toggle('aktif', stokTab === 'kelola');
     if (bLaporan) bLaporan.classList.toggle('aktif', stokTab === 'laporan');
+    if (stokGagal) { gambarGagalStok(); return; }
     if (stokTab === 'kelola') gambarKelolaStok();
     else gambarLaporanStok();
 }
