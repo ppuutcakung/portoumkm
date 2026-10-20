@@ -5,7 +5,7 @@
  */
 let adminProdukCache = [];
 let umkmListCache = [];
-const ADMIN_PRODUK_PER_HALAMAN = 25;
+// Jumlah baris per halaman kini dipakai bersama (BARIS_PER_HALAMAN di utils.js).
 let adminProdukFilterKategori = 'Semua';
 let adminProdukFilterSorot = 'Semua';   // Semua | Disorot | Biasa
 let adminProdukHalaman = 1;
@@ -155,13 +155,10 @@ function renderAdminProdukTable(items) {
         document.getElementById('adminProdukPagination').innerHTML = '';
         return;
     }
-    const totalHalaman = Math.max(Math.ceil(items.length / ADMIN_PRODUK_PER_HALAMAN), 1);
-    if (adminProdukHalaman > totalHalaman) adminProdukHalaman = totalHalaman;
-    const mulai = (adminProdukHalaman - 1) * ADMIN_PRODUK_PER_HALAMAN;
-    const halamanIni = items.slice(mulai, mulai + ADMIN_PRODUK_PER_HALAMAN);
+    const pot = potongHalaman(items, adminProdukHalaman);
+    adminProdukHalaman = pot.halaman;
+    const halamanIni = pot.baris;
 
-    // Tombol Edit/Hapus HANYA membawa ID produk. Sebelumnya seluruh data produk diselipkan ke atribut HTML,
-    // sehingga produk yang namanya/deskripsinya memuat tanda kutip (') tombol Edit-nya mati.
     tbody.innerHTML = halamanIni.map(function(p) {
         const id = idAman(p.id);
         const foto = p.foto_url
@@ -186,19 +183,7 @@ function renderAdminProdukTable(items) {
         ].join('');
     }).join('');
 
-    const pagEl = document.getElementById('adminProdukPagination');
-    if (!pagEl) return;
-    if (totalHalaman <= 1) { pagEl.innerHTML = ''; return; }
-    let html = '<button class="page-btn" ' + (adminProdukHalaman <= 1 ? 'disabled' : '') + ' onclick="gotoAdminProdukHalaman(' + (adminProdukHalaman - 1) + ')"><i class="bi bi-chevron-left"></i></button>';
-    for (let i = 1; i <= totalHalaman; i++) {
-        if (i === 1 || i === totalHalaman || Math.abs(i - adminProdukHalaman) <= 1) {
-            html += '<button class="page-btn ' + (i === adminProdukHalaman ? 'active' : '') + '" onclick="gotoAdminProdukHalaman(' + i + ')">' + i + '</button>';
-        } else if (Math.abs(i - adminProdukHalaman) === 2) {
-            html += '<span class="px-1">...</span>';
-        }
-    }
-    html += '<button class="page-btn" ' + (adminProdukHalaman >= totalHalaman ? 'disabled' : '') + ' onclick="gotoAdminProdukHalaman(' + (adminProdukHalaman + 1) + ')"><i class="bi bi-chevron-right"></i></button>';
-    pagEl.innerHTML = html;
+    gambarKontrolHalaman('adminProdukPagination', pot, 'gotoAdminProdukHalaman');
 }
 
 

@@ -318,7 +318,8 @@ function renderAdminUmkmPage() {
       '<thead><tr><th>Nama UMKM</th><th>Kategori</th><th>Kontak</th><th>Keterangan</th><th></th></tr></thead>',
       '<tbody id="adminUmkmTbody"><tr><td colspan="5" class="text-center py-4">Memuat...</td></tr></tbody>',
       '</table>',
-      '</div>'
+      '</div>',
+      '<div id="adminUmkmPagination" class="pagination"></div>'
     ].join(''));
     adminUmkmFilterKategori = 'Semua';
     loadAdminUmkm();
@@ -347,7 +348,11 @@ function setAdminUmkmKategori(k) {
     filterAdminUmkm();
 }
 /** Gabungan filter kategori + pencarian teks (nama, kontak, keterangan). */
-function filterAdminUmkm() {
+function filterAdminUmkm(resetHalaman) {
+    // Dipanggil dari pencarian & chip kategori; keduanya mengembalikan
+    // tampilan ke halaman 1. Pemanggilan dari tombol halaman mengirim
+    // false supaya halamannya tidak ikut direset.
+    if (resetHalaman !== false) adminUmkmHalaman = 1;
     renderAdminUmkmKategoriChips();
     const q = (((document.getElementById('adminUmkmSearch') || {}).value) || '').trim().toLowerCase();
     const hasil = adminUmkmCache.filter(function(u) {
@@ -356,6 +361,13 @@ function filterAdminUmkm() {
         return cocokKategori && cocokCari;
     });
     renderAdminUmkmTable(hasil);
+}
+let adminUmkmHalaman = 1;
+/** Pindah halaman tabel Data UMKM. */
+function gotoHalamanUmkm(h) {
+    adminUmkmHalaman = h;
+    filterAdminUmkm(false);
+    window.scrollTo(0, 0);
 }
 function renderAdminUmkmTable(items) {
     const tbody = document.getElementById('adminUmkmTbody');
@@ -372,7 +384,9 @@ function renderAdminUmkmTable(items) {
     }
     // Tombol Edit/Hapus HANYA membawa ID UMKM (sebelumnya seluruh data UMKM diselipkan ke atribut HTML,
     // sehingga UMKM yang teksnya memuat tanda kutip (') tombol Edit-nya mati).
-    tbody.innerHTML = items.map(function(u) {
+    const pot = potongHalaman(items, adminUmkmHalaman);
+    adminUmkmHalaman = pot.halaman;
+    tbody.innerHTML = pot.baris.map(function(u) {
         const id = idAman(u.id);
         return [
           '<tr>',
@@ -387,6 +401,7 @@ function renderAdminUmkmTable(items) {
           '</tr>'
         ].join('');
     }).join('');
+    gambarKontrolHalaman('adminUmkmPagination', pot, 'gotoHalamanUmkm');
 }
 
 // -------------------- DETEKSI NAMA UMKM GANDA / MIRIP --------------------

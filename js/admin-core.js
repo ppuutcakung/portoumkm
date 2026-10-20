@@ -50,7 +50,7 @@ function adminPageShell(activeLabel, contentHtml) {
 let dashboardChart = null;
 function renderAdminDashboardPage() {
     const container = document.getElementById('app-container');
-    container.innerHTML = adminPageShell('Ringkasan &amp; Statistik Pesanan', '\n    <div id="dashboardKpiWrap" class="grid gap-3 mb-4" style="grid-template-columns:repeat(2,1fr);"></div>\n    <div class="grid gap-4" style="grid-template-columns:1fr;" id="dashboardChartWrap">\n      <div class="card p-4">\n        <h3 class="font-bold mb-3" style="color:var(--text-primary)">Distribusi Produk per Kategori</h3>\n        <canvas id="chartKategori" height="220"></canvas>\n      </div>\n      <div class="card p-4">\n        <h3 class="font-bold mb-3" style="color:var(--text-primary)"><i class="bi bi-receipt"></i> Rekap Pesanan per UMKM</h3>\n        <div class="table-wrap" style="max-height:360px; overflow-y:auto;"><table class="data-table" style="background:#fff;"><thead><tr><th style="background:#fff; color:#000; border-bottom:2px solid var(--border-color);">UMKM</th><th style="background:#fff; color:#000; border-bottom:2px solid var(--border-color);">Jumlah Pesanan</th></tr></thead><tbody id="rekapPesananUmkmTbody" style="color:#000;"><tr><td colspan="2" class="text-center py-3">Memuat...</td></tr></tbody></table></div>\n      </div>\n    </div>\n  ');
+    container.innerHTML = adminPageShell('Ringkasan &amp; Statistik Pesanan', '\n    <div id="dashboardKpiWrap" class="grid gap-3 mb-4" style="grid-template-columns:repeat(2,1fr);"></div>\n    <div class="grid gap-4" style="grid-template-columns:1fr;" id="dashboardChartWrap">\n      <div class="card p-4">\n        <h3 class="font-bold mb-3" style="color:var(--text-primary)">Distribusi Produk per Kategori</h3>\n        <canvas id="chartKategori" height="220"></canvas>\n      </div>\n      <div class="card p-4">\n        <h3 class="font-bold mb-3" style="color:var(--text-primary)"><i class="bi bi-receipt"></i> Rekap Pesanan per UMKM</h3>\n        <div class="table-wrap" style="max-height:360px; overflow-y:auto;"><table class="data-table" style="background:#fff;"><thead><tr><th style="background:#fff; color:#000; border-bottom:2px solid var(--border-color);">UMKM</th><th style="background:#fff; color:#000; border-bottom:2px solid var(--border-color);">Jumlah Pesanan</th></tr></thead><tbody id="rekapPesananUmkmTbody" style="color:#000;"><tr><td colspan="2" class="text-center py-3">Memuat...</td></tr></tbody></table></div>\n        <div id="rekapUmkmPagination" class="pagination"></div>\n      </div>\n    </div>\n  ');
     if (window.innerWidth >= 992) {
         document.getElementById('dashboardKpiWrap').style.gridTemplateColumns = 'repeat(4,1fr)';
         document.getElementById('dashboardChartWrap').style.gridTemplateColumns = '1.4fr 1fr';
@@ -81,16 +81,27 @@ function loadDashboardData() {
         renderDashboardFromData(res.data);
     });
 }
+let rekapUmkmHalaman = 1;
+let rekapUmkmRows = [];
+/** Pindah halaman tabel Rekap Pesanan per UMKM. */
+function gotoHalamanRekapUmkm(h) {
+    rekapUmkmHalaman = h;
+    renderRekapPesananUmkm(rekapUmkmRows);
+}
 function renderRekapPesananUmkm(rows) {
+    rekapUmkmRows = Array.isArray(rows) ? rows : [];
     const tbody = document.getElementById('rekapPesananUmkmTbody');
     if (!tbody) return;
     if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="2" class="text-center py-3" style="color:var(--text-muted)">Belum ada pesanan tercatat.</td></tr>';
         return;
     }
-    tbody.innerHTML = rows.map(function(r) {
+    const pot = potongHalaman(rows, rekapUmkmHalaman);
+    rekapUmkmHalaman = pot.halaman;
+    tbody.innerHTML = pot.baris.map(function(r) {
         return '<tr><td>' + escapeHtml(r.nama_umkm || '(Tanpa nama UMKM)') + '</td><td>' + r.jumlah_pesanan + ' kali</td></tr>';
     }).join('');
+    gambarKontrolHalaman('rekapUmkmPagination', pot, 'gotoHalamanRekapUmkm');
 }
 function renderKategoriChart(kategoriCounts) {
     const ctx = document.getElementById('chartKategori');

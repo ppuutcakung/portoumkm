@@ -11,6 +11,7 @@ let adminPesananRingkas = {};
 let adminPesananMode = 'Semua';    // Semua | b2c | b2b
 let adminPesananStatus = 'Semua';  // Semua | Sudah Bayar | Belum Bayar
 let adminPesananTahun = 'Semua';   // Semua | '2026' | '2027' | ...
+let adminPesananHalaman = 1;
 /** Tahun pesanan diambil dari tanggal masuknya. '' kalau tanggalnya tidak sah. */
 function tahunPesanan(p) {
     // Dijaga dua lapis: new Date(null) menghasilkan tahun 1970, BUKAN tanggal
@@ -41,7 +42,8 @@ function renderAdminPesananPage() {
       '<thead><tr><th>Tanggal</th><th>No. Pesanan</th><th>Pemesan</th><th>Kirim</th><th>Item</th><th>Total</th><th>Status</th><th></th></tr></thead>',
       '<tbody id="pesananTbody"><tr><td colspan="8" class="text-center py-4">Memuat...</td></tr></tbody>',
       '</table>',
-      '</div>'
+      '</div>',
+      '<div id="pesananPagination" class="pagination"></div>'
     ].join(''));
     adminPesananMode = 'Semua';
     adminPesananStatus = 'Semua';
@@ -63,9 +65,11 @@ function loadAdminPesanan() {
         renderPesananTabel();
     });
 }
-function setModePesananAdmin(m) { adminPesananMode = m; renderPesananTabel(); }
-function setStatusPesananAdmin(st) { adminPesananStatus = st; renderPesananTabel(); }
-function setTahunPesanan(t) { adminPesananTahun = t; renderPesananTabel(); }
+// Setiap kali saringan berubah, halaman kembali ke 1 - kalau tidak, admin
+// bisa mendarat di halaman 5 yang isinya kosong setelah menyaring.
+function setModePesananAdmin(m) { adminPesananMode = m; adminPesananHalaman = 1; renderPesananTabel(); }
+function setStatusPesananAdmin(st) { adminPesananStatus = st; adminPesananHalaman = 1; renderPesananTabel(); }
+function setTahunPesanan(t) { adminPesananTahun = t; adminPesananHalaman = 1; renderPesananTabel(); }
 
 function labelModePesanan(m) { return m === 'b2b' ? 'B2B Grosir' : 'B2C Ritel'; }
 function tagModePesanan(m) {
@@ -143,9 +147,12 @@ function renderPesananTabel() {
 
     if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4" style="color:var(--text-muted)">' + (adminPesananCache.length ? 'Tidak ada pesanan dengan filter ini.' : 'Belum ada pesanan masuk.') + '</td></tr>';
+        gambarKontrolHalaman('pesananPagination', potongHalaman([], 1), 'gotoHalamanPesanan');
         return;
     }
-    tbody.innerHTML = items.map(function(p) {
+    const pot = potongHalaman(items, adminPesananHalaman);
+    adminPesananHalaman = pot.halaman;
+    tbody.innerHTML = pot.baris.map(function(p) {
         const id = idAman(p.id);
         const mode = p.mode || 'b2c';
         const its = itemsPesanan(p);
@@ -179,6 +186,13 @@ function renderPesananTabel() {
           '</tr>'
         ].join('');
     }).join('');
+    gambarKontrolHalaman('pesananPagination', pot, 'gotoHalamanPesanan');
+}
+/** Pindah halaman tabel pesanan; isi tabel digambar ulang tanpa memuat data lagi. */
+function gotoHalamanPesanan(h) {
+    adminPesananHalaman = h;
+    renderPesananTabel();
+    window.scrollTo(0, 0);
 }
 /** Tanggal kirim ditampilkan sederhana: "01 Des 2026". Nilai kosong/aneh jadi "-". */
 function tanggalKirimSederhana(nilai) {

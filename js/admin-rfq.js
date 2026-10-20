@@ -8,7 +8,8 @@
 let adminRfqCache = [];
 let adminRfqFilter = 'Semua';   // status
 let adminRfqJenis = 'Semua';    // RFQ | Sampel | Kustom
-let adminRfqTahun = 'Semua';    // Semua | '2026' | '2027' | ...
+let adminRfqTahun = 'Semua';
+let adminRfqHalaman = 1;    // Semua | '2026' | '2027' | ...
 /** Tahun pengajuan diambil dari tanggal masuknya. '' kalau tanggalnya tidak sah. */
 function tahunRfq(r) {
     // Dijaga dua lapis: new Date(null) menghasilkan tahun 1970, BUKAN tanggal
@@ -38,7 +39,8 @@ function renderAdminRfqPage() {
       '<thead><tr><th>Tanggal</th><th>Dokumen</th><th>Perusahaan / PIC</th><th>Produk / UMKM</th><th>Jumlah / Harga Diminta</th><th>Kesepakatan</th><th>Status</th><th></th></tr></thead>',
       '<tbody id="rfqTbody"><tr><td colspan="8" class="text-center py-4">Memuat...</td></tr></tbody>',
       '</table>',
-      '</div>'
+      '</div>',
+      '<div id="rfqPagination" class="pagination"></div>'
     ].join(''));
     adminRfqFilter = 'Semua';
     adminRfqJenis = 'Semua';
@@ -55,9 +57,10 @@ function loadAdminRfq() {
         renderRfqTabel();
     });
 }
-function setFilterRfq(status) { adminRfqFilter = status; renderRfqTabel(); }
-function setJenisRfq(jenis) { adminRfqJenis = jenis; renderRfqTabel(); }
-function setTahunRfq(t) { adminRfqTahun = t; renderRfqTabel(); }
+// Ganti saringan selalu kembali ke halaman 1.
+function setFilterRfq(status) { adminRfqFilter = status; adminRfqHalaman = 1; renderRfqTabel(); }
+function setJenisRfq(jenis) { adminRfqJenis = jenis; adminRfqHalaman = 1; renderRfqTabel(); }
+function setTahunRfq(t) { adminRfqTahun = t; adminRfqHalaman = 1; renderRfqTabel(); }
 
 function tanggalIndo(iso) {
     if (!iso) return '-';
@@ -106,9 +109,12 @@ function renderRfqTabel() {
     const items = adminRfqFilter === 'Semua' ? sesuaiJenis : sesuaiJenis.filter(function(r) { return r.status === adminRfqFilter; });
     if (!items.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4" style="color:var(--text-muted)">' + (adminRfqCache.length ? 'Tidak ada data dengan filter ini.' : 'Belum ada pengajuan masuk.') + '</td></tr>';
+        gambarKontrolHalaman('rfqPagination', potongHalaman([], 1), 'gotoHalamanRfq');
         return;
     }
-    tbody.innerHTML = items.map(function(r) {
+    const pot = potongHalaman(items, adminRfqHalaman);
+    adminRfqHalaman = pot.halaman;
+    tbody.innerHTML = pot.baris.map(function(r) {
         const id = idAman(r.id);
         const opsi = STATUS_RFQ.map(function(st) { return '<option' + (r.status === st ? ' selected' : '') + '>' + st + '</option>'; }).join('');
         const harga = (r.harga_diminta !== null && r.harga_diminta !== undefined && r.harga_diminta !== '')
@@ -132,6 +138,7 @@ function renderRfqTabel() {
           '</tr>'
         ].join('');
     }).join('');
+    gambarKontrolHalaman('rfqPagination', pot, 'gotoHalamanRfq');
 }
 function cariRfq(id) { return adminRfqCache.find(function(x) { return x.id === id; }); }
 
@@ -308,4 +315,11 @@ function lihatRfq(id) {
         (noWa ? '<a class="btn-wa" style="flex:1; min-width:150px; height:44px;" href="https://wa.me/' + noWa + '?text=' + encodeURIComponent(pesan) + '" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> Hubungi PIC</a>' : '') +
         '</div></div>';
     openModal('previewModal');
+}
+
+/** Pindah halaman tabel RFQ; isi tabel digambar ulang tanpa memuat data lagi. */
+function gotoHalamanRfq(h) {
+    adminRfqHalaman = h;
+    renderRfqTabel();
+    window.scrollTo(0, 0);
 }

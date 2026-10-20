@@ -20,6 +20,7 @@ let stokHari = 30;            // rentang hari laporan yang sedang dipilih
 let stokTab = 'kelola';       // 'kelola' | 'laporan'
 let stokCariTeks = '';
 let stokSaringan = 'Semua';   // Semua | Menipis | Habis | Aman
+let stokHalaman = 1;
 let chartStokGerak = null;
 let chartStokTerjual = null;
 
@@ -87,6 +88,16 @@ function gambarIsiStok() {
 // BAGIAN 1 - MANAJEMEN STOK
 // ============================================================
 
+/**
+ * Urutan tampil: HABIS paling atas, lalu MENIPIS, baru yang aman.
+ *
+ * Alasannya praktis: dua kelompok pertama itulah yang butuh tindakan admin.
+ * Kalau ikut urutan abjad atau urutan penjualan, produk yang habis bisa
+ * terselip di halaman ketiga dan tidak pernah terlihat.
+ * Di dalam kelompok yang sama, stok paling sedikit didahulukan.
+ */
+const URUTAN_STATUS_STOK = { 'Habis': 0, 'Menipis': 1, 'Aman': 2 };
+
 function daftarStokTersaring() {
     const items = (stokData && stokData.items) || [];
     const cari = stokCariTeks.trim().toLowerCase();
@@ -95,6 +106,11 @@ function daftarStokTersaring() {
         if (!cari) return true;
         return (it.nama_produk || '').toLowerCase().indexOf(cari) !== -1 ||
                (it.nama_umkm || '').toLowerCase().indexOf(cari) !== -1;
+    }).sort(function (a, b) {
+        const pa = URUTAN_STATUS_STOK[a.status_stok], pb = URUTAN_STATUS_STOK[b.status_stok];
+        if (pa !== pb) return pa - pb;
+        if (a.stok !== b.stok) return a.stok - b.stok;      // yang paling sedikit dulu
+        return (a.nama_produk || '').localeCompare(b.nama_produk || '');
     });
 }
 
@@ -145,17 +161,20 @@ function gambarKelolaStok() {
           '<div class="table-wrap"><table class="data-table"><thead><tr>' +
             '<th>Produk</th><th>Stok</th><th>Batas Menipis</th><th>Status</th><th>Perkiraan Habis</th><th>Aksi</th>' +
           '</tr></thead><tbody id="stokTbody"></tbody></table></div>' +
+          '<div id="stokPagination" class="pagination"></div>' +
         '</div>';
     gambarBarisStok();
 }
 
 function setCariStok(v) {
     stokCariTeks = v;
+    stokHalaman = 1;   // hasil pencarian selalu dimulai dari halaman pertama
     gambarBarisStok();
 }
 
 function setSaringanStok(s) {
     stokSaringan = s;
+    stokHalaman = 1;
     gambarKelolaStok();
     // Fokus dikembalikan supaya admin bisa langsung mengetik lagi.
     const c = document.getElementById('stokCari');
@@ -168,9 +187,12 @@ function gambarBarisStok() {
     const rows = daftarStokTersaring();
     if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3">Tidak ada produk yang cocok.</td></tr>';
+        gambarKontrolHalaman('stokPagination', potongHalaman([], 1), 'gotoHalamanStok');
         return;
     }
-    tbody.innerHTML = rows.map(function (it) {
+    const pot = potongHalaman(rows, stokHalaman);
+    stokHalaman = pot.halaman;
+    tbody.innerHTML = pot.baris.map(function (it) {
         const kelas = it.status_stok === 'Habis' ? 'habis' : (it.status_stok === 'Menipis' ? 'menipis' : 'aman');
         const perkiraan = (it.hari_tersisa === null || it.hari_tersisa === undefined)
             ? '<span class="pu-stok-samar">belum ada penjualan</span>'
@@ -191,7 +213,15 @@ function gambarBarisStok() {
             '</div></td>' +
         '</tr>';
     }).join('');
+    gambarKontrolHalaman('stokPagination', pot, 'gotoHalamanStok');
     if (typeof terapkanLabelTabelHp === 'function') terapkanLabelTabelHp();
+}
+
+/** Pindah halaman tabel stok. */
+function gotoHalamanStok(h) {
+    stokHalaman = h;
+    gambarBarisStok();
+    window.scrollTo(0, 0);
 }
 
 function cariItemStok(id) {

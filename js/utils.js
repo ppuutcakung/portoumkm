@@ -133,3 +133,73 @@ function sisaStok(p) {
     if (!p || p.pakai_stok !== true) return 0;
     return Math.max(0, Number(p.stok) || 0);
 }
+
+// ============================================================
+// PEMBAGIAN HALAMAN TABEL ADMIN
+// ============================================================
+/**
+ * Semua tabel di portal Admin dibatasi 20 baris per halaman.
+ *
+ * Ditulis sekali di sini dan dipakai bersama oleh semua tabel - bukan
+ * disalin ke tiap berkas - supaya tampilan dan perilakunya seragam, dan
+ * supaya mengubah angkanya cukup di satu tempat.
+ */
+const BARIS_PER_HALAMAN = 20;
+
+/**
+ * Potong daftar jadi satu halaman.
+ * Nomor halaman otomatis dijepit ke rentang yang sah, jadi aman dipanggil
+ * dengan nomor lama setelah data menyusut (mis. sesudah menghapus atau
+ * menyaring).
+ */
+function potongHalaman(daftar, halaman) {
+    const isi = Array.isArray(daftar) ? daftar : [];
+    const total = isi.length;
+    const totalHalaman = Math.max(Math.ceil(total / BARIS_PER_HALAMAN), 1);
+    const h = Math.min(Math.max(1, Number(halaman) || 1), totalHalaman);
+    const mulai = (h - 1) * BARIS_PER_HALAMAN;
+    return {
+        baris: isi.slice(mulai, mulai + BARIS_PER_HALAMAN),
+        halaman: h,
+        totalHalaman: totalHalaman,
+        total: total,
+        dari: total ? mulai + 1 : 0,
+        sampai: Math.min(mulai + BARIS_PER_HALAMAN, total)
+    };
+}
+
+/**
+ * Gambar deretan tombol halaman ke dalam elemen berisi id tertentu.
+ * fnGanti = nama fungsi global yang menerima nomor halaman.
+ *
+ * Satu halaman saja tetap diberi keterangan jumlah baris - admin perlu tahu
+ * ada berapa data seluruhnya, bukan hanya yang terlihat.
+ */
+function gambarKontrolHalaman(idWadah, potongan, fnGanti) {
+    const el = document.getElementById(idWadah);
+    if (!el) return;
+    const p = potongan;
+    if (!p.total) { el.innerHTML = ''; return; }
+
+    const info = '<span class="pu-hal-info">Menampilkan <b>' + p.dari + '–' + p.sampai +
+                 '</b> dari <b>' + p.total + '</b> baris</span>';
+    if (p.totalHalaman <= 1) { el.innerHTML = info; return; }
+
+    const tombol = function (nomor, isi, mati, aktif) {
+        return '<button class="page-btn' + (aktif ? ' active' : '') + '"' +
+               (mati ? ' disabled' : ' onclick="' + fnGanti + '(' + nomor + ')"') + '>' + isi + '</button>';
+    };
+    let html = tombol(p.halaman - 1, '<i class="bi bi-chevron-left"></i>', p.halaman <= 1, false);
+    for (let i = 1; i <= p.totalHalaman; i++) {
+        // Hanya halaman pertama, terakhir, dan sekitar halaman aktif yang
+        // ditampilkan - supaya deretannya tidak memanjang keluar layar
+        // saat datanya ratusan.
+        if (i === 1 || i === p.totalHalaman || Math.abs(i - p.halaman) <= 1) {
+            html += tombol(i, String(i), false, i === p.halaman);
+        } else if (Math.abs(i - p.halaman) === 2) {
+            html += '<span class="pu-hal-titik">…</span>';
+        }
+    }
+    html += tombol(p.halaman + 1, '<i class="bi bi-chevron-right"></i>', p.halaman >= p.totalHalaman, false);
+    el.innerHTML = '<div class="pu-hal-baris">' + info + '<div class="pu-hal-tombol">' + html + '</div></div>';
+}

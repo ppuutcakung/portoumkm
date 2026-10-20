@@ -1225,3 +1225,29 @@ select.form-select.pu-stok-rentang { width: auto; min-width: 140px; }
 .pu-grup-isi > li > .admin-nav-link { padding-left: 30px; }
 .pu-grup-isi { border-left: 2px solid rgba(255, 255, 255, .08); margin-left: 22px; }
 .pu-grup-isi > li > .admin-nav-link { padding-left: 14px; }
+
+/* ============================================================
+   KONTROL HALAMAN TABEL ADMIN
+   ============================================================
+   Kelas .pagination dan .page-btn sudah ada di style.css; di sini hanya
+   ditambahkan baris keterangan jumlah barisnya. */
+.pu-hal-baris {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+}
+.pu-hal-info { font-size: 12px; color: var(--text-muted); }
+.pu-hal-info b { color: var(--text-primary); }
+.pu-hal-tombol { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.pu-hal-titik { color: var(--text-muted); padding: 0 2px; }
+
+/* Di layar sempit keterangan dan tombol ditumpuk, tombol di tengah. */
+@media (max-width: 640px) {
+    .pu-hal-baris { justify-content: center; }
+    .pu-hal-info { width: 100%; text-align: center; }
+    .pu-hal-tombol { justify-content: center; }
+}
