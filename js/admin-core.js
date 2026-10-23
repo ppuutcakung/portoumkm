@@ -231,7 +231,7 @@ function pantauTabelHp() {
 const GRUP_SIDEBAR = {
     Aset:  ['adminProduk', 'adminStok'],
     Iklan: ['adminHero', 'adminFlyer', 'adminMitra', 'adminPromosi'],
-    Jual:  ['adminKonfirmasi', 'adminPesanan', 'adminRfq']
+    Jual:  ['adminKonfirmasi', 'adminPesanan', 'adminRfq', 'adminKeuangan']
 };
 const KUNCI_GRUP_SIDEBAR = 'portoumkm_grup_sidebar';
 

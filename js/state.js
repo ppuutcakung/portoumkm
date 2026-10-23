@@ -52,4 +52,4 @@ const PUBLIC_PAGES = ['home', 'katalog', 'mitra', 'keranjang', 'adminLogin'];
  * membandingkan daftar ini dengan daftar penggambar di router.js supaya
  * kelalaian serupa tertangkap otomatis.
  */
-const ADMIN_PAGES = ['adminDashboard', 'adminProduk', 'adminHero', 'adminFlyer', 'adminMitra', 'adminUmkm', 'adminKonfirmasi', 'adminPesanan', 'adminRfq', 'adminPromosi', 'adminStok', 'adminSettings'];
+const ADMIN_PAGES = ['adminDashboard', 'adminProduk', 'adminHero', 'adminFlyer', 'adminMitra', 'adminUmkm', 'adminKonfirmasi', 'adminPesanan', 'adminRfq', 'adminKeuangan', 'adminPromosi', 'adminStok', 'adminSettings'];

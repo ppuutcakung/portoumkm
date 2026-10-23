@@ -1251,3 +1251,33 @@ select.form-select.pu-stok-rentang { width: auto; min-width: 140px; }
     .pu-hal-info { width: 100%; text-align: center; }
     .pu-hal-tombol { justify-content: center; }
 }
+
+/* ============================================================
+   LAPORAN KEUANGAN
+   ============================================================ */
+.pu-keu-alat {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+/* Tombol unduh didorong ke kanan supaya tidak berdempetan dengan
+   pemilih rentang di sebelah kiri. */
+.pu-keu-tombol { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Angka rupiah di kartu ringkasan lebih kecil daripada angka stok,
+   karena isinya jauh lebih panjang ("Rp 12.450.000"). */
+.pu-keu-angka {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+@media (max-width: 640px) {
+    .pu-keu-tombol { margin-left: 0; width: 100%; }
+    .pu-keu-tombol .btn { flex: 1; }
+    .pu-keu-angka { font-size: 15px; }
+}

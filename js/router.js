@@ -57,6 +57,14 @@ function applyConfig(config) {
     AppState.config = config;
     if (config.appName)
         document.getElementById('footerAppName').textContent = config.appName;
+
+    // Identitas cabang: judul tab dan nama lembaga di footer. Keduanya dulu
+    // tertanam di index.html bertuliskan nama satu cabang saja, sehingga
+    // cabang lain ikut memakainya. Sekarang diisi dari Pengaturan.
+    const lembaga = namaLembaga();
+    document.title = (config.appName || 'PortoUMKM') + ' - Katalog Resmi UMKM Binaan ' + lembaga;
+    const elLembaga = document.getElementById('footerLembaga');
+    if (elLembaga) elLembaga.textContent = lembaga;
     if (config.logoUrl) {
         ['appLogo', 'adminLogo'].forEach(id => {
             const el = document.getElementById(id);
@@ -132,6 +140,7 @@ function navigateTo(pageName, options) {
         adminPesanan: renderAdminPesananPage,
         adminRfq: renderAdminRfqPage,
         adminStok: renderAdminStokPage,
+        adminKeuangan: renderAdminKeuanganPage,
         adminPromosi: renderAdminPromosiPage,
         adminSettings: renderAdminSettingsPage
     };
