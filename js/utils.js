@@ -203,3 +203,16 @@ function gambarKontrolHalaman(idWadah, potongan, fnGanti) {
     html += tombol(p.halaman + 1, '<i class="bi bi-chevron-right"></i>', p.halaman >= p.totalHalaman, false);
     el.innerHTML = '<div class="pu-hal-baris">' + info + '<div class="pu-hal-tombol">' + html + '</div></div>';
 }
+
+/**
+ * Nama lembaga/cabang pengelola, mis. "PPU UT Cakung" atau "PPU UT Bandung".
+ *
+ * Dulu nama ini tertanam di 15 titik di dalam kode - termasuk di footer PDF
+ * invoice dan di halaman kebijakan privasi - sehingga cabang baru akan
+ * menerbitkan dokumen atas nama cabang lain. Sekarang diisi tiap cabang
+ * sendiri lewat menu Pengaturan, dan dibaca dari satu tempat ini.
+ */
+function namaLembaga() {
+    const v = (AppState.config && AppState.config.namaLembaga) || '';
+    return String(v).trim() || 'Pusat Pendampingan UMKM';
+}
