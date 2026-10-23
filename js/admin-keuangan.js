@@ -8,13 +8,24 @@
  * angka antar halaman tidak saling bertentangan. Pesanan yang masih
  * Menunggu belum tentu jadi, jadi tidak ikut dihitung.
  *
- * Seluruh angka datang dari satu panggilan get_laporan_keuangan(hari);
+ * Seluruh angka datang dari satu panggilan get_laporan_keuangan(hari, tahun);
  * halaman ini tidak menghitung ulang apa pun sendiri, supaya tidak ada
  * kemungkinan layar dan ekspor menampilkan angka berbeda.
+ *
+ * Ada dua cara memilih periode, dan keduanya memang dibutuhkan:
+ *  - rentang berjalan (7/30/90/365 hari) untuk memantau keadaan terkini;
+ *  - tahun kalender untuk pelaporan ke stakeholder, karena rentang berjalan
+ *    ikut bergeser tiap hari dan di pertengahan Januari akan mencampur dua
+ *    tahun sekaligus.
  */
 
 let keuData = null;
 let keuHari = 30;
+// Kalau diisi, yang dipakai adalah satu TAHUN KALENDER penuh dan keuHari
+// diabaikan. Rentang bergulir ("90 hari terakhir") ikut bergeser tiap hari,
+// jadi tidak cocok untuk laporan tahunan ke stakeholder: pada pertengahan
+// Januari 2027 ia akan mencampur 2027 dengan hampir seluruh 2026.
+let keuTahun = null;
 let keuGagal = '';
 let chartKeuTren = null;
 let chartKeuJalur = null;
@@ -57,11 +68,8 @@ function renderAdminKeuanganPage() {
     container.innerHTML = adminPageShell('Laporan Keuangan',
         '<div class="pu-keu-alat">' +
           '<label class="pu-stok-label">Rentang laporan:</label>' +
-          '<select class="form-select pu-stok-rentang" onchange="setRentangKeuangan(this.value)">' +
-            KEU_RENTANG.map(function (o) {
-                return '<option value="' + o.hari + '"' + (keuHari === o.hari ? ' selected' : '') + '>' + o.label + '</option>';
-            }).join('') +
-          '</select>' +
+          '<select class="form-select pu-stok-rentang" id="keuRentang" ' +
+            'onchange="setRentangKeuangan(this.value)">' + opsiRentangKeu() + '</select>' +
           '<div class="pu-keu-tombol">' +
             '<button class="btn btn-secondary" id="btnKeuExcel" onclick="unduhKeuanganExcel()">' +
               '<i class="bi bi-file-earmark-spreadsheet"></i> Unduh Excel</button>' +
@@ -75,7 +83,8 @@ function renderAdminKeuanganPage() {
 }
 
 async function muatDataKeuangan() {
-    const res = await dbRpc('get_laporan_keuangan', { p_hari: keuHari });
+    const res = await dbRpc('get_laporan_keuangan',
+        { p_hari: keuHari, p_tahun: keuTahun });
     if (!res.success) {
         keuGagal = res.message || 'Tidak diketahui';
         keuData = null;
@@ -84,6 +93,7 @@ async function muatDataKeuangan() {
     }
     keuGagal = '';
     keuData = res.data || null;
+    segarkanPilihanRentangKeu();
     gambarLaporanKeuangan();
 }
 
@@ -98,7 +108,13 @@ function gambarGagalKeuangan() {
 }
 
 function setRentangKeuangan(v) {
-    keuHari = Number(v) || 30;
+    const t = String(v === null || v === undefined ? '' : v);
+    if (t.indexOf('th:') === 0) {
+        keuTahun = Number(t.slice(3)) || null;
+    } else {
+        keuTahun = null;
+        keuHari = Number(t) || 30;
+    }
     muatDataKeuangan();
 }
 
@@ -110,7 +126,7 @@ function gambarLaporanKeuangan() {
 
     if (!r.jumlah_transaksi) {
         el.innerHTML = '<div class="card p-4"><div class="empty-state"><i class="bi bi-graph-up"></i>' +
-            'Belum ada pesanan terkonfirmasi pada rentang ini.<br>' +
+            'Belum ada pesanan terkonfirmasi pada <b>' + escapeHtml(labelRentangKeu()) + '</b>.<br>' +
             '<span class="text-xs">Laporan hanya menghitung pesanan yang sudah <b>Dikonfirmasi</b> ' +
             'di menu Konfirmasi Pesanan.</span></div></div>';
         return;
@@ -303,8 +319,46 @@ function gambarChartKeuangan(d) {
  * berkas bulan lalu tanpa dirapikan ulang.
  */
 function labelRentangKeu() {
+    if (keuTahun) return 'Tahun ' + keuTahun;
     const o = KEU_RENTANG.filter(function (x) { return x.hari === keuHari; })[0];
     return o ? o.label : (keuHari + ' hari terakhir');
+}
+
+/** Nilai pilihan yang sedang aktif, dalam bentuk yang dipakai <select>. */
+function nilaiRentangKeu() {
+    return keuTahun ? ('th:' + keuTahun) : String(keuHari);
+}
+
+/** Isi pilihan rentang: rentang bergulir + tahun kalender yang ADA datanya.
+ *  Daftar tahunnya datang dari database, jadi tidak perlu disentuh lagi
+ *  setiap kali ganti tahun. */
+function opsiRentangKeu() {
+    let html = '<optgroup label="Rentang berjalan">' +
+        KEU_RENTANG.map(function (o) {
+            return '<option value="' + o.hari + '"' +
+                   (!keuTahun && keuHari === o.hari ? ' selected' : '') + '>' + o.label + '</option>';
+        }).join('') + '</optgroup>';
+    const tahun = ((keuData || {}).tahun_tersedia) || [];
+    // Tahun yang sedang dipilih tetap ditampilkan walau datanya kosong,
+    // kalau tidak pilihannya akan melompat sendiri dan membingungkan.
+    const daftar = tahun.slice();
+    if (keuTahun && daftar.indexOf(keuTahun) === -1) daftar.unshift(keuTahun);
+    if (daftar.length) {
+        html += '<optgroup label="Tahun kalender">' + daftar.map(function (t) {
+            return '<option value="th:' + t + '"' +
+                   (keuTahun === Number(t) ? ' selected' : '') + '>Tahun ' + t + '</option>';
+        }).join('') + '</optgroup>';
+    }
+    return html;
+}
+
+/** Perbarui isi <select> setelah data dimuat, karena daftar tahunnya baru
+ *  diketahui dari jawaban database. */
+function segarkanPilihanRentangKeu() {
+    const sel = document.getElementById('keuRentang');
+    if (!sel) return;
+    sel.innerHTML = opsiRentangKeu();
+    sel.value = nilaiRentangKeu();
 }
 
 function namaBerkasKeu(ext) {
